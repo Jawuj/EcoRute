@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabase';
 import { EcoMap } from '../components/EcoMap';
 import { MEDELLIN_COORDS } from '../constants';
+import { calculateDistance, COMPLETION_THRESHOLD_METERS } from '../utils';
 
 export function TrabajadorView({ user }) {
   const [pickups, setPickups] = useState([]);
@@ -14,10 +15,12 @@ export function TrabajadorView({ user }) {
 
   useEffect(() => {
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
+      const watchId = navigator.geolocation.watchPosition(
         (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        (err) => console.error("Error obteniendo ubicación:", err)
+        (err) => console.error("Error rastreando ubicación:", err),
+        { enableHighAccuracy: true, maximumAge: 5000 }
       );
+      return () => navigator.geolocation.clearWatch(watchId);
     }
   }, []);
 
@@ -42,7 +45,15 @@ export function TrabajadorView({ user }) {
     return () => supabase.removeChannel(channel);
   }, []);
 
-  const updateStatus = async (id, newStatus) => {
+  const updateStatus = async (pickup, newStatus) => {
+    if (newStatus === 'completado') {
+      const dist = calculateDistance(userLocation, pickup.ubicacion);
+      if (dist > COMPLETION_THRESHOLD_METERS) {
+        alert(`Estás muy lejos del punto (${Math.round(dist)}m). Debes estar a menos de ${COMPLETION_THRESHOLD_METERS}m.`);
+        return;
+      }
+    }
+
     try {
       const updateData = { estado: newStatus };
       if (newStatus === 'completado') {
@@ -52,7 +63,7 @@ export function TrabajadorView({ user }) {
       const { error } = await supabase
         .from('reportes')
         .update(updateData)
-        .eq('id', id);
+        .eq('id', pickup.id);
       
       if (error) throw error;
       if (newStatus === 'completado') {
@@ -67,68 +78,89 @@ export function TrabajadorView({ user }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-[calc(100vh-12rem)]">
       {/* Lista de Tareas */}
-      <div className="lg:col-span-1 space-y-6 overflow-y-auto pr-4">
-        <header className="flex justify-between items-center sticky top-0 bg-black/40 backdrop-blur-md p-2 z-10 gap-2">
-          <h2 className="text-xl font-black uppercase tracking-tighter">Agenda de Campo</h2>
+      <div className="lg:col-span-1 flex flex-col gap-6 overflow-hidden">
+        <header className="flex justify-between items-end px-2">
+          <div className="space-y-1">
+            <h2 className="text-3xl font-black tracking-tighter text-white">AGENDA</h2>
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">Puntos de atención</p>
+          </div>
           <div className="flex flex-col items-end gap-2">
-            <span className="px-3 py-1 bg-orange-500/10 text-orange-500 text-[10px] font-black rounded-full border border-orange-500/20">
-              {pickups.filter(p => p.estado === 'pendiente').length} PENDIENTES
-            </span>
+            <div className="px-4 py-2 bg-orange-500/10 border border-orange-500/20 rounded-2xl">
+              <span className="text-orange-500 text-[10px] font-black tracking-widest uppercase">
+                {pickups.filter(p => p.estado === 'pendiente').length} PENDIENTES
+              </span>
+            </div>
             <button 
               onClick={() => setShowHeatmap(!showHeatmap)}
-              className={`px-3 py-1 text-[9px] font-black uppercase rounded-lg border transition-all ${showHeatmap ? 'bg-orange-500/20 text-orange-400 border-orange-500/50 shadow-lg shadow-orange-500/20' : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10'}`}
+              className={`px-3 py-1 text-[8px] font-black uppercase rounded-lg border transition-all ${showHeatmap ? 'bg-orange-500/20 text-orange-400 border-orange-500/50 shadow-lg shadow-orange-500/20' : 'bg-white/5 text-gray-500 border-white/10 hover:bg-white/10'}`}
             >
               {showHeatmap ? 'Ocultar Calor' : 'Ver Mapa Calor'}
             </button>
           </div>
         </header>
 
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto pr-4 space-y-4 custom-scrollbar">
           {pickups.map((pickup) => (
             <motion.div
               key={pickup.id}
               layout
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
               onClick={() => { setActivePickup(pickup); setIsNavigating(false); }}
-              className={`glass-panel p-5 cursor-pointer border-2 transition-all group ${activePickup?.id === pickup.id ? 'border-orange-500 bg-orange-500/5' : 'border-white/5 hover:border-white/10'}`}
+              className={`glass-panel p-6 cursor-pointer border-2 transition-all relative overflow-hidden group ${activePickup?.id === pickup.id ? 'border-orange-500 bg-orange-500/10' : 'border-white/5 hover:border-white/10 hover:bg-white/5'}`}
             >
-              <div className="flex gap-4">
-                <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white/5 flex-shrink-0">
+              <div className="flex gap-6 relative z-10">
+                <div className="w-24 h-24 rounded-3xl overflow-hidden bg-black/40 flex-shrink-0 border-2 border-white/5 group-hover:border-white/10 transition-colors">
                   {pickup.imagen_url ? (
-                    <img src={pickup.imagen_url} alt="Evidencia" className="w-full h-full object-cover" />
+                    <img src={pickup.imagen_url} alt="Evidencia" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-700">
-                      <ShieldCheck size={32} />
+                    <div className="w-full h-full flex items-center justify-center text-gray-700 bg-gradient-to-br from-white/5 to-transparent">
+                      <ShieldCheck size={40} />
                     </div>
                   )}
                 </div>
                 
-                <div className="flex-1 space-y-2">
-                  <div className="flex justify-between items-start">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-orange-500">
-                      {pickup.material}
-                    </span>
-                    <span className="text-[9px] text-gray-500 font-bold">
-                      {new Date(pickup.created_at).toLocaleTimeString()}
-                    </span>
+                <div className="flex-1 flex flex-col justify-between">
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${pickup.estado === 'pendiente' ? 'bg-orange-500 animate-pulse' : 'bg-green-500'}`} />
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
+                          {pickup.material}
+                        </span>
+                      </div>
+                      <span className="text-[9px] text-gray-600 font-black tracking-widest">
+                        {new Date(pickup.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-black tracking-tight text-white leading-tight">Punto de Atención</h3>
+                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
+                      <MapPin size={10} /> Medellín, Antioquia
+                    </p>
                   </div>
-                  <h3 className="text-sm font-bold truncate">Punto de Atención</h3>
-                  <div className="flex gap-2">
+
+                  <div className="flex gap-3 mt-4">
                     {pickup.estado === 'pendiente' ? (
                       <button 
-                        onClick={(e) => { e.stopPropagation(); updateStatus(pickup.id, 'completado'); }}
-                        className="px-3 py-1 bg-orange-500 text-black text-[9px] font-black rounded-lg hover:bg-orange-400 transition-colors"
+                        onClick={(e) => { e.stopPropagation(); updateStatus(pickup, 'completado'); }}
+                        className="px-4 py-2 bg-orange-500 text-black text-[9px] font-black rounded-xl hover:bg-orange-400 transition-all active:scale-95 shadow-lg shadow-orange-500/20"
                       >
                         RESOLVER
                       </button>
                     ) : (
-                      <span className="px-3 py-1 bg-white/10 text-[9px] font-black rounded-lg text-gray-400">RESUELTO</span>
+                      <div className="px-4 py-2 bg-white/5 border border-white/10 text-[9px] font-black rounded-xl text-green-500 flex items-center gap-2">
+                        <CheckCircle size={10} /> RESUELTO
+                      </div>
                     )}
-                    <button className="px-3 py-1 bg-white/5 text-[9px] font-black rounded-lg hover:bg-white/10">
-                      MAPA
+                    <button className="px-4 py-2 bg-white/5 border border-white/5 text-[9px] font-black rounded-xl hover:bg-white/10 transition-all text-gray-400">
+                      DETALLES
                     </button>
                   </div>
                 </div>
               </div>
+
+              {/* Background Glow */}
+              <div className={`absolute -right-10 -top-10 w-32 h-32 blur-[60px] opacity-20 rounded-full transition-colors ${activePickup?.id === pickup.id ? 'bg-orange-500' : 'bg-white/5'}`} />
             </motion.div>
           ))}
         </div>
@@ -170,7 +202,7 @@ export function TrabajadorView({ user }) {
                   {isNavigating ? 'CANCELAR RUTA' : 'IR AL PUNTO'}
                 </button>
                 <button 
-                  onClick={() => updateStatus(activePickup.id, 'completado')}
+                  onClick={() => updateStatus(activePickup, 'completado')}
                   className="px-8 py-4 bg-orange-500 text-black font-black rounded-2xl shadow-xl shadow-orange-500/20 hover:scale-105 transition-all"
                 >
                   MARCAR RESUELTO

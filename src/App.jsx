@@ -47,6 +47,12 @@ export default function App() {
   const handleRegister = async (e) => {
     e.preventDefault();
     setError('');
+    
+    if (role === 'admin') {
+      setError('No se permite registrar nuevas cuentas de Administrador.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -145,7 +151,9 @@ export default function App() {
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Selecciona tu Perfil</label>
                 <div className="grid grid-cols-2 gap-3">
-                  {roleConfigs.map((cfg) => (
+                  {roleConfigs
+                    .filter(cfg => !isRegistering || !cfg.secure || cfg.id !== 'admin')
+                    .map((cfg) => (
                     <button
                       key={cfg.id}
                       type="button"

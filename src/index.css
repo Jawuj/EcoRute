@@ -21,22 +21,46 @@ body {
 }
 
 .glass-panel {
-  @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2rem] shadow-2xl;
+  @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2.5rem] shadow-2xl;
 }
 
-.role-ciudadano { background: radial-gradient(circle at top right, #1e40af, #020617); }
-.role-reciclador { background: radial-gradient(circle at top right, #065f46, #022c22); }
-.role-admin { background: radial-gradient(circle at top right, #854d0e, #422006); }
-.role-trabajador { background: radial-gradient(circle at top right, #9a3412, #431407); }
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* For Firefox */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+.role-ciudadano { background: radial-gradient(circle at top right, #1e40af 0%, #020617 100%); }
+.role-reciclador { background: radial-gradient(circle at top right, #065f46 0%, #022c22 100%); }
+.role-admin { background: radial-gradient(circle at top right, #854d0e 0%, #422006 100%); }
+.role-trabajador { background: radial-gradient(circle at top right, #9a3412 0%, #431407 100%); }
 
 .btn-eco {
-  @apply px-6 py-3 rounded-2xl font-bold uppercase tracking-wider transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2;
+  @apply px-6 py-3 rounded-2xl font-black uppercase tracking-[0.2em] transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-[10px];
 }
 
 input:not([type="checkbox"]) {
-  @apply bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-white/30 transition-all text-white placeholder-white/30;
+  @apply bg-white/5 border border-white/10 rounded-2xl px-6 py-4 outline-none focus:border-white/30 transition-all text-white placeholder-white/20 font-medium;
 }
 
 #map {
   mask-image: linear-gradient(to bottom, black 80%, transparent);
-}
+}
