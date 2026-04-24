@@ -1,112 +1,184 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { Calendar, ListChecks, PenTool as Tool, AlertTriangle, UserCheck, CheckCircle, Clock } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Truck, CheckCircle, MapPin, Clock, ShieldCheck } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { supabase } from '../supabase';
+import { EcoMap } from '../components/EcoMap';
+import { MEDELLIN_COORDS } from '../constants';
 
-export function TrabajadorView() {
-  const tasks = [
-    { id: 1, title: 'Limpieza Punto Crítico #12', area: 'Prado Centro', time: '08:00 AM', status: 'pendiente' },
-    { id: 2, title: 'Mantenimiento de Vehículo', area: 'Base Operativa', time: '11:30 AM', status: 'completado' },
-    { id: 3, title: 'Inspección Sanitaria', area: 'Comuna 13', time: '02:00 PM', status: 'pendiente' },
-  ];
+export function TrabajadorView({ user }) {
+  const [pickups, setPickups] = useState([]);
+  const [activePickup, setActivePickup] = useState(null);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [showHeatmap, setShowHeatmap] = useState(false);
+  const [userLocation, setUserLocation] = useState(null);
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        (err) => console.error("Error obteniendo ubicación:", err)
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    const fetchPickups = async () => {
+      const { data, error } = await supabase
+        .from('reportes')
+        .select('*')
+        .eq('material', 'basura')
+        .order('created_at', { ascending: false });
+      
+      if (!error) setPickups(data);
+    };
+
+    fetchPickups();
+
+    const channel = supabase
+      .channel('trabajador-channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reportes' }, () => fetchPickups())
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }, []);
+
+  const updateStatus = async (id, newStatus) => {
+    try {
+      const updateData = { estado: newStatus };
+      if (newStatus === 'completado') {
+        updateData.reciclador_id = user.id; // Puede ser un trabajador o reciclador
+      }
+
+      const { error } = await supabase
+        .from('reportes')
+        .update(updateData)
+        .eq('id', id);
+      
+      if (error) throw error;
+      if (newStatus === 'completado') {
+        setActivePickup(null);
+        setIsNavigating(false);
+      }
+    } catch (err) {
+      console.error("Error al actualizar estado:", err);
+    }
+  };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
-      <header className="space-y-1">
-        <h2 className="text-4xl font-black tracking-tighter">Agenda Operativa</h2>
-        <p className="text-gray-400 font-medium italic">Gestión de tareas de campo y mantenimiento.</p>
-      </header>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-[calc(100vh-12rem)]">
+      {/* Lista de Tareas */}
+      <div className="lg:col-span-1 space-y-6 overflow-y-auto pr-4">
+        <header className="flex justify-between items-center sticky top-0 bg-black/40 backdrop-blur-md p-2 z-10 gap-2">
+          <h2 className="text-xl font-black uppercase tracking-tighter">Agenda de Campo</h2>
+          <div className="flex flex-col items-end gap-2">
+            <span className="px-3 py-1 bg-orange-500/10 text-orange-500 text-[10px] font-black rounded-full border border-orange-500/20">
+              {pickups.filter(p => p.estado === 'pendiente').length} PENDIENTES
+            </span>
+            <button 
+              onClick={() => setShowHeatmap(!showHeatmap)}
+              className={`px-3 py-1 text-[9px] font-black uppercase rounded-lg border transition-all ${showHeatmap ? 'bg-orange-500/20 text-orange-400 border-orange-500/50 shadow-lg shadow-orange-500/20' : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10'}`}
+            >
+              {showHeatmap ? 'Ocultar Calor' : 'Ver Mapa Calor'}
+            </button>
+          </div>
+        </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="glass-panel p-8 border-orange-500/10">
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-orange-500/20 rounded-2xl">
-                  <Calendar className="text-orange-500" size={24} />
+        <div className="space-y-4">
+          {pickups.map((pickup) => (
+            <motion.div
+              key={pickup.id}
+              layout
+              onClick={() => { setActivePickup(pickup); setIsNavigating(false); }}
+              className={`glass-panel p-5 cursor-pointer border-2 transition-all group ${activePickup?.id === pickup.id ? 'border-orange-500 bg-orange-500/5' : 'border-white/5 hover:border-white/10'}`}
+            >
+              <div className="flex gap-4">
+                <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white/5 flex-shrink-0">
+                  {pickup.imagen_url ? (
+                    <img src={pickup.imagen_url} alt="Evidencia" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-700">
+                      <ShieldCheck size={32} />
+                    </div>
+                  )}
                 </div>
-                <h3 className="text-xl font-black tracking-tight">Tareas Programadas</h3>
+                
+                <div className="flex-1 space-y-2">
+                  <div className="flex justify-between items-start">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-orange-500">
+                      {pickup.material}
+                    </span>
+                    <span className="text-[9px] text-gray-500 font-bold">
+                      {new Date(pickup.created_at).toLocaleTimeString()}
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-bold truncate">Punto de Atención</h3>
+                  <div className="flex gap-2">
+                    {pickup.estado === 'pendiente' ? (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); updateStatus(pickup.id, 'completado'); }}
+                        className="px-3 py-1 bg-orange-500 text-black text-[9px] font-black rounded-lg hover:bg-orange-400 transition-colors"
+                      >
+                        RESOLVER
+                      </button>
+                    ) : (
+                      <span className="px-3 py-1 bg-white/10 text-[9px] font-black rounded-lg text-gray-400">RESUELTO</span>
+                    )}
+                    <button className="px-3 py-1 bg-white/5 text-[9px] font-black rounded-lg hover:bg-white/10">
+                      MAPA
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div className="px-4 py-1 bg-white/5 rounded-xl border border-white/5">
-                <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">24 Mayo, 2024</span>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+
+      {/* Mapa y Detalle */}
+      <div className="lg:col-span-2 glass-panel p-0 overflow-hidden relative border-white/5">
+        <EcoMap 
+          points={pickups} 
+          center={activePickup?.ubicacion || userLocation || MEDELLIN_COORDS} 
+          zoom={14} 
+          showHeatmap={showHeatmap}
+          routeTarget={isNavigating ? activePickup?.ubicacion : null}
+          onMarkerClick={(pickup) => { setActivePickup(pickup); setIsNavigating(false); }}
+        />
+        
+        {activePickup && (
+          <motion.div 
+            initial={{ y: 100 }} 
+            animate={{ y: 0 }}
+            className="absolute bottom-6 left-6 right-6 glass-panel p-6 bg-black/60 backdrop-blur-xl border-orange-500/30 flex items-center justify-between"
+          >
+            <div className="flex items-center gap-6">
+              {activePickup.imagen_url && (
+                <img src={activePickup.imagen_url} className="w-24 h-24 rounded-2xl object-cover border-2 border-white/10" alt="Evidencia" />
+              )}
+              <div>
+                <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest">Atención Requerida</p>
+                <h3 className="text-xl font-black">Material: {activePickup.material}</h3>
+                <p className="text-sm text-gray-400 font-medium">Estado: {activePickup.estado}</p>
               </div>
             </div>
-            
-            <div className="space-y-4">
-              {tasks.map((task, idx) => (
-                <motion.div 
-                  key={task.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: idx * 0.1 }}
-                  className="p-6 bg-black/40 rounded-3xl border border-white/5 hover:border-orange-500/30 transition-all flex items-center justify-between group"
+            {activePickup.estado === 'pendiente' && (
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => setIsNavigating(!isNavigating)}
+                  className={`px-8 py-4 font-black rounded-2xl shadow-xl transition-all ${isNavigating ? 'bg-red-500/20 text-red-500 border-2 border-red-500/50 hover:bg-red-500/30' : 'bg-blue-600 text-white shadow-blue-600/20 hover:scale-105'}`}
                 >
-                  <div className="flex items-center gap-6">
-                    <div className="text-center min-w-[80px]">
-                      <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest">{task.time}</p>
-                      <div className="h-4 w-px bg-white/10 mx-auto my-1" />
-                      <Clock size={16} className="text-gray-600 mx-auto" />
-                    </div>
-                    <div>
-                      <h4 className="font-black text-xl tracking-tighter uppercase group-hover:text-orange-400 transition-colors">{task.title}</h4>
-                      <p className="text-xs font-bold text-gray-500 flex items-center gap-2">
-                        <Tool size={12} /> {task.area}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className={`flex items-center gap-3 px-4 py-2 rounded-2xl border ${task.status === 'completado' ? 'bg-green-500/10 border-green-500/20 text-green-500' : 'bg-orange-500/10 border-orange-500/20 text-orange-400'}`}>
-                    {task.status === 'completado' ? <CheckCircle size={18} /> : <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />}
-                    <span className="text-[10px] font-black uppercase tracking-widest">{task.status}</span>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-8">
-          <div className="glass-panel p-8 space-y-6">
-            <h3 className="text-xl font-black tracking-tight flex items-center gap-3">
-              <Tool className="text-orange-500" size={24} />
-              Acciones de Campo
-            </h3>
-            <div className="grid grid-cols-1 gap-4">
-              <button className="flex items-center gap-4 p-5 bg-white/5 rounded-3xl border border-white/5 hover:bg-red-500/10 hover:border-red-500/30 transition-all text-left">
-                <div className="p-3 bg-red-500/20 rounded-2xl">
-                  <AlertTriangle size={24} className="text-red-500" />
-                </div>
-                <div>
-                  <p className="font-black uppercase text-[10px] tracking-widest text-red-400">Emergencia</p>
-                  <p className="font-bold text-sm">Reportar Incidente</p>
-                </div>
-              </button>
-              
-              <button className="flex items-center gap-4 p-5 bg-white/5 rounded-3xl border border-white/5 hover:bg-orange-500/10 hover:border-orange-500/30 transition-all text-left">
-                <div className="p-3 bg-orange-500/20 rounded-2xl">
-                  <UserCheck size={24} className="text-orange-500" />
-                </div>
-                <div>
-                  <p className="font-black uppercase text-[10px] tracking-widest text-orange-400">Equipo</p>
-                  <p className="font-bold text-sm">Solicitar Soporte</p>
-                </div>
-              </button>
-            </div>
-          </div>
-
-          <div className="glass-panel p-8 bg-orange-600/10 border-orange-500/20 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 opacity-10">
-              <ListChecks size={80} className="text-orange-500" />
-            </div>
-            <h3 className="font-black text-orange-400 uppercase tracking-widest text-[10px] mb-4">Aviso de Operaciones</h3>
-            <p className="text-sm font-medium italic text-gray-300 leading-relaxed relative z-10">
-              "Gran trabajo esta semana en la Comuna 10. Mantengamos el ritmo para la jornada de recolección masiva del sábado."
-            </p>
-            <div className="mt-6 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-orange-500/40 flex items-center justify-center text-[10px] font-black text-white">DR</div>
-              <p className="text-[10px] font-black uppercase text-gray-500 tracking-tighter">David R. - Supervisor</p>
-            </div>
-          </div>
-        </div>
+                  {isNavigating ? 'CANCELAR RUTA' : 'IR AL PUNTO'}
+                </button>
+                <button 
+                  onClick={() => updateStatus(activePickup.id, 'completado')}
+                  className="px-8 py-4 bg-orange-500 text-black font-black rounded-2xl shadow-xl shadow-orange-500/20 hover:scale-105 transition-all"
+                >
+                  MARCAR RESUELTO
+                </button>
+              </div>
+            )}
+          </motion.div>
+        )}
       </div>
     </div>
   );

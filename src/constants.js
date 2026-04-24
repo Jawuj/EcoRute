@@ -1,4 +1,4 @@
-export const GOOGLE_MAPS_API_KEY = 'YOUR_API_KEY_HERE';
+export const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'YOUR_API_KEY_HERE';
 
 export const MEDELLIN_COORDS = { lat: 6.2442, lng: -75.5812 };
 

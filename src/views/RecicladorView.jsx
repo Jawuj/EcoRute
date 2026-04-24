@@ -1,192 +1,178 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Loader } from '@googlemaps/js-api-loader';
-import { GOOGLE_MAPS_API_KEY, MEDELLIN_COORDS } from '../constants';
+import React, { useEffect, useState } from 'react';
+import { Truck, CheckCircle, MapPin, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Navigation, CheckCircle2, Clock, Map as MapIcon, ChevronRight, MapPin } from 'lucide-react';
-import { db } from '../firebase';
-import { collection, query, onSnapshot, updateDoc, doc } from 'firebase/firestore';
+import { supabase } from '../supabase';
+import { EcoMap } from '../components/EcoMap';
+import { MEDELLIN_COORDS } from '../constants';
 
-export function RecicladorView() {
-  const mapRef = useRef(null);
-  const [google, setGoogle] = useState(null);
+export function RecicladorView({ user }) {
   const [pickups, setPickups] = useState([]);
   const [activePickup, setActivePickup] = useState(null);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [userLocation, setUserLocation] = useState(null);
 
-  // Escuchar reportes en tiempo real desde Firebase
+  // Obtener ubicación inicial del usuario
   useEffect(() => {
-    const q = query(collection(db, "reportes"));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const docs = [];
-      querySnapshot.forEach((doc) => {
-        docs.push({ id: doc.id, ...doc.data() });
-      });
-      setPickups(docs);
-    });
-
-    return () => unsubscribe();
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        (err) => console.error("Error obteniendo ubicación:", err)
+      );
+    }
   }, []);
 
+  // Escuchar reportes en tiempo real desde Supabase
   useEffect(() => {
-    if (pickups.length === 0) return;
+    const fetchPickups = async () => {
+      const { data, error } = await supabase
+        .from('reportes')
+        .select('*')
+        .in('material', ['carton', 'vidrio', 'plastico'])
+        .order('created_at', { ascending: false });
+      
+      if (!error) setPickups(data);
+    };
 
-    const loader = new Loader({
-      apiKey: GOOGLE_MAPS_API_KEY,
-      version: 'weekly',
-    });
+    fetchPickups();
 
-    loader.load().then((googleInstance) => {
-      setGoogle(googleInstance);
-      const map = new googleInstance.maps.Map(mapRef.current, {
-        center: MEDELLIN_COORDS,
-        zoom: 13,
-        styles: mapStyles,
-        disableDefaultUI: true,
-      });
+    const channel = supabase
+      .channel('custom-all-channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reportes' }, () => fetchPickups())
+      .subscribe();
 
-      pickups.forEach((pickup) => {
-        if (pickup.ubicacion) {
-          const marker = new googleInstance.maps.Marker({
-            position: { lat: pickup.ubicacion.lat, lng: pickup.ubicacion.lng },
-            map,
-            title: pickup.material,
-            icon: {
-              path: googleInstance.maps.SymbolPath.CIRCLE,
-              scale: 8,
-              fillColor: pickup.estado === 'completado' ? '#10b981' : '#f59e0b',
-              fillOpacity: 1,
-              strokeWeight: 2,
-              strokeColor: '#ffffff',
-            }
-          });
-        }
-      });
-    }).catch(e => console.error("Map error:", e));
-  }, [pickups]);
+    return () => supabase.removeChannel(channel);
+  }, []);
 
   const updateStatus = async (id, newStatus) => {
     try {
-      const docRef = doc(db, "reportes", id);
-      await updateDoc(docRef, { estado: newStatus });
-      if (newStatus === 'completado') setActivePickup(null);
+      const updateData = { estado: newStatus };
+      if (newStatus === 'completado') {
+        updateData.reciclador_id = user.id;
+      }
+
+      const { error } = await supabase
+        .from('reportes')
+        .update(updateData)
+        .eq('id', id);
+      
+      if (error) throw error;
+      if (newStatus === 'completado') {
+        setActivePickup(null);
+        setIsNavigating(false);
+      }
     } catch (err) {
       console.error("Error al actualizar estado:", err);
     }
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-[calc(100vh-180px)]">
-      <div className="lg:col-span-2 flex flex-col gap-6 h-full">
-        <div className="flex-1 glass-panel p-0 overflow-hidden relative border-white/5">
-          <div ref={mapRef} id="map" className="w-full h-full" />
-          
-          <div className="absolute top-6 left-6 p-1 bg-black/40 backdrop-blur-md rounded-2xl border border-white/10 flex gap-1">
-            <button className="px-4 py-2 bg-green-500 rounded-xl text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-green-500/20">Mapa de Rutas</button>
-            <button className="px-4 py-2 hover:bg-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-500 transition-colors">Histórico</button>
-          </div>
-
-          <div className="absolute bottom-10 left-10 right-10">
-            <div className="glass-panel p-6 bg-black/60 backdrop-blur-2xl flex items-center justify-between border-green-500/20">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-green-500/20 rounded-2xl ring-2 ring-green-500/40">
-                  <Navigation className="text-green-500" size={24} />
-                </div>
-                <div>
-                  <h4 className="font-black tracking-tight text-lg">Siguiente Punto Crítico</h4>
-                  <p className="text-xs font-bold text-gray-400">Comuna 10 - La Candelaria • A 0.8 km</p>
-                </div>
-              </div>
-              <button className="btn-eco bg-green-600 hover:bg-green-500 text-white shadow-xl shadow-green-600/30">
-                Optimizar Trayecto
-              </button>
-            </div>
-          </div>
-
-          {GOOGLE_MAPS_API_KEY.includes('YOUR_API_KEY') && (
-            <div className="absolute inset-0 bg-black/80 flex items-center justify-center p-12 text-center">
-              <div className="space-y-6 max-w-sm">
-                <div className="p-6 bg-white/5 rounded-[2rem] border border-white/10 inline-block">
-                  <MapPin size={48} className="text-green-500" />
-                </div>
-                <h3 className="text-2xl font-black tracking-tight">Servicio Geográfico Desactivado</h3>
-                <p className="text-sm text-gray-500 font-medium leading-relaxed">Por favor, configura tu **API Key** en `constants.js` para habilitar el motor de navegación espacial.</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="space-y-8 h-full overflow-y-auto pr-2 custom-scrollbar">
-        <header className="flex justify-between items-center">
-          <h3 className="text-2xl font-black tracking-tight">Pendientes</h3>
-          <span className="px-3 py-1 bg-white/5 rounded-lg text-[10px] font-black text-gray-400">{pickups.length} TOTAL</span>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-[calc(100vh-12rem)]">
+      {/* Lista de Reportes Pendientes */}
+      <div className="lg:col-span-1 space-y-6 overflow-y-auto pr-4">
+        <header className="flex justify-between items-center sticky top-0 bg-black/40 backdrop-blur-md p-2 z-10">
+          <h2 className="text-xl font-black uppercase tracking-tighter">Rutas Pendientes</h2>
+          <span className="px-3 py-1 bg-green-500/10 text-green-500 text-[10px] font-black rounded-full border border-green-500/20">
+            {pickups.filter(p => p.estado === 'pendiente').length} TOTAL
+          </span>
         </header>
 
         <div className="space-y-4">
-          <AnimatePresence mode="popLayout">
-            {pickups.map((pickup) => (
-              <motion.div 
-                key={pickup.id}
-                layout
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className={`glass-panel p-6 border-2 transition-all group ${activePickup === pickup.id ? 'border-green-500 bg-green-500/5' : 'border-white/5 hover:border-white/20'}`}
-              >
-                <div className="flex justify-between items-start mb-6">
-                  <div>
-                    <span className="px-2 py-1 bg-white/5 text-[9px] font-black uppercase tracking-widest text-gray-400 rounded-md mb-2 inline-block border border-white/5">{pickup.material}</span>
-                    <h4 className="font-black text-xl tracking-tighter uppercase">{pickup.id.slice(0, 8)}</h4>
-                    <p className="text-xs font-bold text-gray-500 mt-1 flex items-center gap-1">
-                      <Clock size={12} /> Hace poco en Comuna 10
-                    </p>
-                  </div>
-                  <div className={`p-3 rounded-xl ${pickup.estado === 'completado' ? 'bg-green-500/20 text-green-500' : 'bg-yellow-500/20 text-yellow-500'}`}>
-                    {pickup.estado === 'completado' ? <CheckCircle2 size={24} /> : <Clock size={24} />}
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  {pickup.estado === 'pendiente' && (
-                    <button 
-                      onClick={() => { setActivePickup(pickup.id); updateStatus(pickup.id, 'camino'); }}
-                      className="btn-eco bg-white text-black hover:bg-gray-200 text-xs py-3 flex-1"
-                    >
-                      Tomar Ruta <ChevronRight size={16} />
-                    </button>
-                  )}
-                  {pickup.estado === 'camino' && (
-                    <button 
-                      onClick={() => updateStatus(pickup.id, 'completado')}
-                      className="btn-eco bg-green-600 text-white hover:bg-green-500 text-xs py-3 flex-1 shadow-lg shadow-green-600/20"
-                    >
-                      Finalizar Recogida
-                    </button>
-                  )}
-                  {pickup.estado === 'completado' && (
-                    <div className="w-full py-3 bg-green-500/10 border border-green-500/20 rounded-2xl text-center">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-green-500">Recogida Exitosa</span>
+          {pickups.map((pickup) => (
+            <motion.div
+              key={pickup.id}
+              layout
+              onClick={() => { setActivePickup(pickup); setIsNavigating(false); }}
+              className={`glass-panel p-5 cursor-pointer border-2 transition-all group ${activePickup?.id === pickup.id ? 'border-green-500 bg-green-500/5' : 'border-white/5 hover:border-white/10'}`}
+            >
+              <div className="flex gap-4">
+                {/* Miniatura de la imagen o Icono */}
+                <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white/5 flex-shrink-0">
+                  {pickup.imagen_url ? (
+                    <img src={pickup.imagen_url} alt="Evidencia" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-700">
+                      <Truck size={32} />
                     </div>
                   )}
                 </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-          {pickups.length === 0 && (
-            <div className="text-center py-20 bg-white/5 rounded-3xl border border-white/5 border-dashed">
-              <p className="text-sm font-bold text-gray-600 italic uppercase tracking-widest">No hay reportes activos ahora</p>
-            </div>
-          )}
+                
+                <div className="flex-1 space-y-2">
+                  <div className="flex justify-between items-start">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-green-500">
+                      {pickup.material}
+                    </span>
+                    <span className="text-[9px] text-gray-500 font-bold">
+                      {new Date(pickup.created_at).toLocaleTimeString()}
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-bold truncate">Reporte en Medellín</h3>
+                  <div className="flex gap-2">
+                    {pickup.estado === 'pendiente' ? (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); updateStatus(pickup.id, 'completado'); }}
+                        className="px-3 py-1 bg-green-500 text-black text-[9px] font-black rounded-lg hover:bg-green-400 transition-colors"
+                      >
+                        RECOGER
+                      </button>
+                    ) : (
+                      <span className="px-3 py-1 bg-white/10 text-[9px] font-black rounded-lg text-gray-400">COMPLETADO</span>
+                    )}
+                    <button className="px-3 py-1 bg-white/5 text-[9px] font-black rounded-lg hover:bg-white/10">
+                      VER MAPA
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          ))}
         </div>
+      </div>
+
+      {/* Mapa y Detalle */}
+      <div className="lg:col-span-2 glass-panel p-0 overflow-hidden relative border-white/5">
+        <EcoMap 
+          points={pickups} 
+          center={activePickup?.ubicacion || userLocation || MEDELLIN_COORDS} 
+          zoom={14} 
+          routeTarget={isNavigating ? activePickup?.ubicacion : null}
+          onMarkerClick={(pickup) => { setActivePickup(pickup); setIsNavigating(false); }}
+        />
+        
+        {activePickup && (
+          <motion.div 
+            initial={{ y: 100 }} 
+            animate={{ y: 0 }}
+            className="absolute bottom-6 left-6 right-6 glass-panel p-6 bg-black/60 backdrop-blur-xl border-green-500/30 flex items-center justify-between"
+          >
+            <div className="flex items-center gap-6">
+              {activePickup.imagen_url && (
+                <img src={activePickup.imagen_url} className="w-24 h-24 rounded-2xl object-cover border-2 border-white/10" alt="Evidencia" />
+              )}
+              <div>
+                <p className="text-[10px] font-black text-green-500 uppercase tracking-widest">Punto Seleccionado</p>
+                <h3 className="text-xl font-black">Material: {activePickup.material}</h3>
+                <p className="text-sm text-gray-400 font-medium">Estado: {activePickup.estado}</p>
+              </div>
+            </div>
+            {activePickup.estado === 'pendiente' && (
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => setIsNavigating(!isNavigating)}
+                  className={`px-8 py-4 font-black rounded-2xl shadow-xl transition-all ${isNavigating ? 'bg-red-500/20 text-red-500 border-2 border-red-500/50 hover:bg-red-500/30' : 'bg-blue-600 text-white shadow-blue-600/20 hover:scale-105'}`}
+                >
+                  {isNavigating ? 'CANCELAR RUTA' : 'IR AL PUNTO'}
+                </button>
+                <button 
+                  onClick={() => updateStatus(activePickup.id, 'completado')}
+                  className="px-8 py-4 bg-green-500 text-black font-black rounded-2xl shadow-xl shadow-green-500/20 hover:scale-105 transition-all"
+                >
+                  MARCAR RECOGIDA
+                </button>
+              </div>
+            )}
+          </motion.div>
+        )}
       </div>
     </div>
   );
 }
-
-const mapStyles = [
-  { "elementType": "geometry", "stylers": [{ "color": "#111827" }] },
-  { "elementType": "labels.text.fill", "stylers": [{ "color": "#6b7280" }] },
-  { "elementType": "labels.text.stroke", "stylers": [{ "color": "#111827" }] },
-  { "featureType": "administrative", "elementType": "geometry", "stylers": [{ "color": "#374151" }] },
-  { "featureType": "road", "elementType": "geometry.fill", "stylers": [{ "color": "#1f2937" }] },
-  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#000000" }] }
-];
