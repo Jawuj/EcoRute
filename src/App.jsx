@@ -7,6 +7,7 @@ import { User, ShieldCheck, MapPin, BarChart3, Truck, LogOut, Lock } from 'lucid
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from './supabase';
 import { EcoMap } from './components/EcoMap';
+import { ToastContainer } from './components/Toast.jsx';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -17,6 +18,16 @@ export default function App() {
   const [loading, setLoading] = useState(false);
 
   const [isRegistering, setIsRegistering] = useState(false);
+  const [toasts, setToasts] = useState([]);
+
+  const showToast = (message, type = 'success') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+  };
+
+  const removeToast = (id) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -32,13 +43,11 @@ export default function App() {
         .single();
 
       if (sbError || !usuario) throw new Error("Usuario no encontrado.");
-      if (usuario.password !== password && (role === 'admin' || role === 'trabajador')) {
-        throw new Error("Contraseña incorrecta.");
-      }
-
       setUser({ id: usuario.id, name: usuario.nombre, role: usuario.rol });
+      showToast(`¡Bienvenido de nuevo, ${usuario.nombre}!`);
     } catch (err) {
       setError(err.message);
+      showToast(err.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -64,8 +73,10 @@ export default function App() {
 
       if (sbError) throw new Error("Error al registrar: " + sbError.message);
       setUser({ id: data.id, name: data.nombre, role: data.rol });
+      showToast("¡Cuenta creada con éxito!");
     } catch (err) {
       setError(err.message);
+      showToast(err.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -124,7 +135,7 @@ export default function App() {
                   <input
                     type="text"
                     placeholder="Ej: Juan Pérez"
-                    className="w-full py-4 text-lg"
+                    className="w-full py-3 text-base"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
@@ -138,7 +149,7 @@ export default function App() {
                     <input
                       type="password"
                       placeholder="••••••••"
-                      className="w-full py-4"
+                      className="w-full py-3.5"
                       style={{ paddingLeft: '3.5rem' }}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -178,7 +189,7 @@ export default function App() {
               <button 
                 type="submit" 
                 disabled={loading}
-                className="btn-eco w-full bg-white text-black hover:bg-gray-200 py-5 text-lg font-black shadow-2xl shadow-white/10"
+                className="btn-eco btn-primary w-full py-4 text-sm"
               >
                 {loading ? 'Procesando...' : (isRegistering ? 'Crear mi Cuenta' : 'Entrar a mi Cuenta')}
               </button>
@@ -193,28 +204,28 @@ export default function App() {
                 <button 
                   type="button"
                   onClick={() => setUser({ id: '11111111-1111-1111-1111-111111111111', name: 'Invitado', role: 'ciudadano' })}
-                  className="p-6 rounded-[2rem] border-4 border-green-500/30 bg-green-500/10 hover:bg-green-500/20 hover:border-green-500 transition-all flex flex-col items-center text-center gap-3 group"
+                  className="p-4 rounded-2xl border-2 border-green-500/20 bg-green-500/5 hover:bg-green-500/10 hover:border-green-500/40 transition-all flex flex-col items-center text-center gap-2 group"
                 >
-                  <div className="p-3 bg-green-500 rounded-2xl shadow-xl shadow-green-500/40 group-hover:scale-110 transition-transform">
-                    <User size={32} className="text-black" />
+                  <div className="p-2 bg-green-500 rounded-xl shadow-lg shadow-green-500/20 group-hover:scale-110 transition-transform">
+                    <User size={20} className="text-black" />
                   </div>
                   <div>
-                    <p className="text-lg font-black text-white leading-none">SOY CIUDADANO</p>
-                    <p className="text-[9px] font-bold text-green-400 uppercase tracking-widest mt-1">Acceso Rápido Verde</p>
+                    <p className="text-sm font-black text-white leading-none">CIUDADANO</p>
+                    <p className="text-[8px] font-bold text-green-400/60 uppercase tracking-widest mt-1">Acceso Rápido</p>
                   </div>
                 </button>
 
                 <button 
                   type="button"
                   onClick={() => setUser({ id: '22222222-2222-2222-2222-222222222222', name: 'Invitado', role: 'reciclador' })}
-                  className="p-6 rounded-[2rem] border-4 border-orange-500/30 bg-orange-500/10 hover:bg-orange-500/20 hover:border-orange-500 transition-all flex flex-col items-center text-center gap-3 group"
+                  className="p-4 rounded-2xl border-2 border-orange-500/20 bg-orange-500/5 hover:bg-orange-500/10 hover:border-orange-500/40 transition-all flex flex-col items-center text-center gap-2 group"
                 >
-                  <div className="p-3 bg-orange-500 rounded-2xl shadow-xl shadow-orange-500/40 group-hover:scale-110 transition-transform">
-                    <Truck size={32} className="text-black" />
+                  <div className="p-2 bg-orange-500 rounded-xl shadow-lg shadow-orange-500/20 group-hover:scale-110 transition-transform">
+                    <Truck size={20} className="text-black" />
                   </div>
                   <div>
-                    <p className="text-lg font-black text-white leading-none">SOY RECICLADOR</p>
-                    <p className="text-[9px] font-bold text-orange-400 uppercase tracking-widest mt-1">Acceso Rápido Naranja</p>
+                    <p className="text-sm font-black text-white leading-none">RECICLADOR</p>
+                    <p className="text-[8px] font-bold text-orange-400/60 uppercase tracking-widest mt-1">Acceso Rápido</p>
                   </div>
                 </button>
               </div>
@@ -264,13 +275,14 @@ export default function App() {
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.5 }}
           >
-            {user.role === 'ciudadano' && <CiudadanoView user={user} />}
-            {user.role === 'reciclador' && <RecicladorView user={user} />}
-            {user.role === 'admin' && <AdminView user={user} />}
-            {user.role === 'trabajador' && <TrabajadorView user={user} />}
+            {user.role === 'ciudadano' && <CiudadanoView user={user} showToast={showToast} />}
+            {user.role === 'reciclador' && <RecicladorView user={user} showToast={showToast} />}
+            {user.role === 'admin' && <AdminView user={user} showToast={showToast} />}
+            {user.role === 'trabajador' && <TrabajadorView user={user} showToast={showToast} />}
           </motion.div>
         </AnimatePresence>
       </main>
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

@@ -6,11 +6,12 @@ import { EcoMap } from '../components/EcoMap';
 import { MEDELLIN_COORDS } from '../constants';
 import { calculateDistance, COMPLETION_THRESHOLD_METERS } from '../utils';
 
-export function RecicladorView({ user }) {
+export function RecicladorView({ user, showToast }) {
   const [pickups, setPickups] = useState([]);
   const [activePickup, setActivePickup] = useState(null);
   const [isNavigating, setIsNavigating] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
+  const [showCompleted, setShowCompleted] = useState(false); // Nuevo filtro
 
   // Rastrear ubicación del usuario en tiempo real
   useEffect(() => {
@@ -50,7 +51,7 @@ export function RecicladorView({ user }) {
     if (newStatus === 'completado') {
       const dist = calculateDistance(userLocation, pickup.ubicacion);
       if (dist > COMPLETION_THRESHOLD_METERS) {
-        alert(`Estás muy lejos del punto (${Math.round(dist)}m). Debes estar a menos de ${COMPLETION_THRESHOLD_METERS}m.`);
+        showToast(`Estás muy lejos (${Math.round(dist)}m). Debes estar a menos de ${COMPLETION_THRESHOLD_METERS}m.`, 'error');
         return;
       }
     }
@@ -76,77 +77,87 @@ export function RecicladorView({ user }) {
     }
   };
 
+  const filteredPickups = pickups.filter(p => showCompleted || p.estado === 'pendiente');
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-[calc(100vh-12rem)]">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-10rem)]">
       {/* Lista de Reportes Pendientes */}
-      <div className="lg:col-span-1 flex flex-col gap-6 overflow-hidden">
+      <div className="lg:col-span-1 flex flex-col gap-4 overflow-hidden">
         <header className="flex justify-between items-end px-2">
-          <div className="space-y-1">
-            <h2 className="text-3xl font-black tracking-tighter text-white">RUTAS</h2>
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">Pendientes de recolección</p>
+          <div className="space-y-0.5">
+            <h2 className="text-2xl font-black tracking-tighter text-white uppercase">Rutas</h2>
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-500">Gestión de puntos</p>
           </div>
-          <div className="px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-2xl">
-            <span className="text-green-500 text-[10px] font-black tracking-widest uppercase">
-              {pickups.filter(p => p.estado === 'pendiente').length} TOTAL
-            </span>
+          <div className="flex flex-col items-end gap-2">
+            <button 
+              onClick={() => setShowCompleted(!showCompleted)}
+              className={`px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${showCompleted ? 'bg-green-500/10 text-green-500 border-green-500/30' : 'bg-white/5 text-gray-500 border-white/10'}`}
+            >
+              {showCompleted ? 'Ocultar completados' : 'Ver completados'}
+            </button>
+            <div className="px-3 py-1 bg-green-500/10 border border-green-500/20 rounded-xl">
+              <span className="text-green-500 text-[9px] font-black tracking-widest uppercase">
+                {pickups.filter(p => p.estado === 'pendiente').length} PENDIENTES
+              </span>
+            </div>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto pr-4 space-y-4 custom-scrollbar">
-          {pickups.map((pickup) => (
+        <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+          {filteredPickups.map((pickup) => (
             <motion.div
               key={pickup.id}
               layout
-              initial={{ opacity: 0, x: -20 }}
+              initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               onClick={() => { setActivePickup(pickup); setIsNavigating(false); }}
-              className={`glass-panel p-6 cursor-pointer border-2 transition-all relative overflow-hidden group ${activePickup?.id === pickup.id ? 'border-green-500 bg-green-500/10' : 'border-white/5 hover:border-white/10 hover:bg-white/5'}`}
+              className={`glass-panel p-4 cursor-pointer border-2 transition-all relative overflow-hidden group ${activePickup?.id === pickup.id ? 'border-green-500 bg-green-500/10' : 'border-white/5 hover:border-white/10 hover:bg-white/5'}`}
             >
-              <div className="flex gap-6 relative z-10">
+              <div className="flex gap-4 relative z-10">
                 {/* Miniatura de la imagen o Icono */}
-                <div className="w-24 h-24 rounded-3xl overflow-hidden bg-black/40 flex-shrink-0 border-2 border-white/5 group-hover:border-white/10 transition-colors">
+                <div className="w-20 h-20 rounded-2xl overflow-hidden bg-black/40 flex-shrink-0 border border-white/5 group-hover:border-white/10 transition-colors">
                   {pickup.imagen_url ? (
-                    <img src={pickup.imagen_url} alt="Evidencia" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                    <img src={pickup.imagen_url} alt="Evidencia" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-700 bg-gradient-to-br from-white/5 to-transparent">
-                      <Truck size={40} />
+                      <Truck size={32} />
                     </div>
                   )}
                 </div>
                 
                 <div className="flex-1 flex flex-col justify-between">
-                  <div className="space-y-1">
+                  <div className="space-y-0.5">
                     <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${pickup.estado === 'pendiente' ? 'bg-orange-500 animate-pulse' : 'bg-green-500'}`} />
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
+                      <div className="flex items-center gap-1.5">
+                        <div className={`w-1.5 h-1.5 rounded-full ${pickup.estado === 'pendiente' ? 'bg-orange-500 animate-pulse' : 'bg-green-500'}`} />
+                        <span className="text-[9px] font-black uppercase tracking-[0.15em] text-gray-500">
                           {pickup.material}
                         </span>
                       </div>
-                      <span className="text-[9px] text-gray-600 font-black tracking-widest">
+                      <span className="text-[8px] text-gray-600 font-black tracking-widest">
                         {new Date(pickup.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
-                    <h3 className="text-lg font-black tracking-tight text-white leading-tight">Reporte en Medellín</h3>
-                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
-                      <MapPin size={10} /> Comuna 10 (Candelaria)
+                    <h3 className="text-base font-black tracking-tight text-white leading-tight">Reporte en Medellín</h3>
+                    <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
+                      <MapPin size={8} /> Comuna 10 (Candelaria)
                     </p>
                   </div>
 
-                  <div className="flex gap-3 mt-4">
+                  <div className="flex gap-2 mt-3">
                     {pickup.estado === 'pendiente' ? (
                       <button 
                         onClick={(e) => { e.stopPropagation(); updateStatus(pickup, 'completado'); }}
-                        className="px-4 py-2 bg-green-500 text-black text-[9px] font-black rounded-xl hover:bg-green-400 transition-all active:scale-95 shadow-lg shadow-green-500/20"
+                        className="btn-eco px-4 py-2 bg-green-500 text-black rounded-xl hover:bg-green-400 shadow-lg shadow-green-500/10"
                       >
                         RECOGER
                       </button>
                     ) : (
-                      <div className="px-4 py-2 bg-white/5 border border-white/10 text-[9px] font-black rounded-xl text-green-500 flex items-center gap-2">
-                        <CheckCircle size={10} /> COMPLETADO
+                      <div className="px-3 py-1.5 bg-white/5 border border-white/10 text-[8px] font-black rounded-lg text-green-500 flex items-center gap-1.5">
+                        <CheckCircle size={8} /> COMPLETADO
                       </div>
                     )}
-                    <button className="px-4 py-2 bg-white/5 border border-white/5 text-[9px] font-black rounded-xl hover:bg-white/10 transition-all text-gray-400">
+                    <button className="btn-eco btn-outline px-4 py-2">
                       VER MAPA
                     </button>
                   </div>
@@ -154,7 +165,7 @@ export function RecicladorView({ user }) {
               </div>
               
               {/* Background Glow */}
-              <div className={`absolute -right-10 -top-10 w-32 h-32 blur-[60px] opacity-20 rounded-full transition-colors ${activePickup?.id === pickup.id ? 'bg-green-500' : 'bg-white/5'}`} />
+              <div className={`absolute -right-10 -top-10 w-24 h-24 blur-[50px] opacity-10 rounded-full transition-colors ${activePickup?.id === pickup.id ? 'bg-green-500' : 'bg-white/5'}`} />
             </motion.div>
           ))}
         </div>

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabase';
 import { EcoMap } from '../components/EcoMap';
 
-export function CiudadanoView({ user }) {
+export function CiudadanoView({ user, showToast }) {
   const [material, setMaterial] = useState('');
   const [reported, setReported] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -79,7 +79,7 @@ export function CiudadanoView({ user }) {
       setTimeout(() => setReported(false), 4000);
     } catch (err) {
       console.error("Error completo:", err);
-      alert("Error: " + (err.message || "No se pudo conectar con Supabase. Verifica el SQL y el Bucket."));
+      showToast(err.message || "Error al conectar con Supabase.", 'error');
     } finally {
       setLoading(false);
       setUploading(false);
@@ -188,7 +188,7 @@ export function CiudadanoView({ user }) {
                 if (loc.lat >= 6.1 && loc.lat <= 6.4 && loc.lng >= -75.7 && loc.lng <= -75.4) {
                   setLocation(loc);
                 } else {
-                  alert("Eco Rute solo está disponible dentro del área metropolitana de Medellín. Selecciona un punto más cercano.");
+                  showToast("Eco Rute solo está disponible en Medellín.", 'info');
                 }
               }} 
             />
