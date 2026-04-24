@@ -169,60 +169,68 @@ export function EcoMap({ points = [], center = MEDELLIN_COORDS, zoom = 13, onMap
     }
   }, [points, map, google, onMarkerClick, showHeatmap, heatmapLayer]);
 
-  // 3. Dibujar marcador del usuario y trazar ruta
-  useEffect(() => {
-    if (!map || !google || !currentLocation) return;
+    // 3. Dibujar marcador del usuario y trazar ruta
+    useEffect(() => {
+      if (!map || !google || !currentLocation) return;
 
-    // Crear marcador del camión/usuario si no existe
-    if (!userMarkerRef.current) {
-      let iconColor = '#3b82f6'; // Ciudadano: Azul
-      let iconPath = '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'; // User SVG
-      
-      if (userRole === 'reciclador') {
-        iconColor = '#10b981'; // Reciclador: Verde
-      } else if (userRole === 'trabajador') {
-        iconColor = '#f97316'; // Trabajador: Naranja
-        iconPath = '<path d="M10 17h4V5H2v12h3"/><path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5"/><path d="M14 17h1"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/>'; // Truck SVG
+      if (userRole === 'admin') {
+        if (userMarkerRef.current) {
+          userMarkerRef.current.map = null;
+          userMarkerRef.current = null;
+        }
+        return;
       }
 
-      const svgHtml = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5)); background: #111827; border-radius: 50%; padding: 6px; border: 3px solid ${iconColor};">${iconPath}</svg>`;
-      const container = document.createElement('div');
-      container.innerHTML = svgHtml;
+      // Crear marcador del camión/usuario si no existe
+      if (!userMarkerRef.current) {
+        let iconColor = '#3b82f6'; // Ciudadano: Azul
+        let iconPath = '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'; // User SVG
+        
+        if (userRole === 'reciclador') {
+          iconColor = '#10b981'; // Reciclador: Verde
+        } else if (userRole === 'trabajador') {
+          iconColor = '#f97316'; // Trabajador: Naranja
+          iconPath = '<path d="M10 17h4V5H2v12h3"/><path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5"/><path d="M14 17h1"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/>'; // Truck SVG
+        }
 
-      userMarkerRef.current = new google.AdvancedMarkerElement({
-        position: currentLocation,
-        map,
-        title: 'Tu Ubicación',
-        content: container,
-      });
-    } else {
-      userMarkerRef.current.position = currentLocation;
-    }
+        const svgHtml = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5)); background: #111827; border-radius: 50%; padding: 6px; border: 3px solid ${iconColor};">${iconPath}</svg>`;
+        const container = document.createElement('div');
+        container.innerHTML = svgHtml;
 
-    // Calcular ruta si hay un objetivo
-    if (routeTarget && directionsRenderer) {
-      const calculateRoute = async () => {
-        const { DirectionsService } = await importLibrary('routes');
-        const directionsService = new DirectionsService();
-
-        directionsService.route({
-          origin: currentLocation,
-          destination: routeTarget,
-          travelMode: 'DRIVING',
-        }, (response, status) => {
-          if (status === 'OK') {
-            directionsRenderer.setDirections(response);
-          } else {
-            console.error("Fallo al generar ruta:", status);
-          }
+        userMarkerRef.current = new google.AdvancedMarkerElement({
+          position: currentLocation,
+          map,
+          title: 'Tu Ubicación',
+          content: container,
         });
-      };
-      calculateRoute();
-    } else if (directionsRenderer) {
-      directionsRenderer.setDirections({ routes: [] }); // Limpiar ruta si no hay target
-    }
+      } else {
+        userMarkerRef.current.position = currentLocation;
+      }
 
-  }, [currentLocation, routeTarget, map, google, directionsRenderer]);
+      // Calcular ruta si hay un objetivo
+      if (routeTarget && directionsRenderer) {
+        const calculateRoute = async () => {
+          const { DirectionsService } = await importLibrary('routes');
+          const directionsService = new DirectionsService();
+
+          directionsService.route({
+            origin: currentLocation,
+            destination: routeTarget,
+            travelMode: 'DRIVING',
+          }, (response, status) => {
+            if (status === 'OK') {
+              directionsRenderer.setDirections(response);
+            } else {
+              console.error("Fallo al generar ruta:", status);
+            }
+          });
+        };
+        calculateRoute();
+      } else if (directionsRenderer) {
+        directionsRenderer.setDirections({ routes: [] }); // Limpiar ruta si no hay target
+      }
+
+    }, [currentLocation, routeTarget, map, google, directionsRenderer, userRole]);
 
   return (
     <div className="w-full h-full relative overflow-hidden rounded-[2rem]">

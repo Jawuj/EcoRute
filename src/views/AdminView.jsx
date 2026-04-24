@@ -135,7 +135,7 @@ export function AdminView() {
           </div>
           
           <div className="aspect-video bg-black/40 border border-white/5 rounded-[2rem] relative overflow-hidden">
-            <EcoMap points={reports} showHeatmap={showHeatmap} />
+            <EcoMap points={reports} showHeatmap={showHeatmap} userRole="admin" />
           </div>
         </div>
 

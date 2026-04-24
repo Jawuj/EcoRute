@@ -132,7 +132,8 @@ export default function App() {
                     <input
                       type="password"
                       placeholder="••••••••"
-                      className="w-full pl-12 py-4"
+                      className="w-full py-4"
+                      style={{ paddingLeft: '3.5rem' }}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required={isRegistering || role === 'admin' || role === 'trabajador'}
