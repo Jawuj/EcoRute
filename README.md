@@ -6,6 +6,7 @@
 [![Vite](https://img.shields.io/badge/Vite-8.0-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Supabase](https://img.shields.io/badge/Supabase-2.104-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com/)
 [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4.2-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![Leaflet](https://img.shields.io/badge/Leaflet-1.9-199900?logo=leaflet&logoColor=white)](https://leafletjs.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ---
@@ -40,6 +41,20 @@ Esta herramienta busca transformar la gestión ambiental urbana, mejorando los t
 
 ---
 
+## Funcionalidades Avanzadas
+
+### 🗺️ Motor de Mapas Inteligente
+- **Navegación tipo Uber**: Los recicladores y trabajadores ven su posición en tiempo real con rotación basada en la orientación del dispositivo.
+- **Cálculo de Rutas Dinámico**: Integración con *Leaflet Routing Machine* para trazar el camino más corto hacia los puntos de recolección.
+- **Mapas de Calor (Heatmaps)**: Visualización de zonas con mayor densidad de residuos para planeación urbana estratégica.
+
+### ⚡ Experiencia de Usuario Premium
+- **Diseño Glassmorphic**: Interfaz moderna con efectos de desenfoque y transparencias.
+- **Animaciones Fluidas**: Uso de *Framer Motion* para transiciones entre vistas y micro-interacciones.
+- **Diseño Responsivo**: Adaptado perfectamente para dispositivos móviles (uso en campo) y escritorio (administración).
+
+---
+
 ## Tecnologías
 
 - **Frontend**: 
@@ -52,7 +67,11 @@ Esta herramienta busca transformar la gestión ambiental urbana, mejorando los t
   - **PostgreSQL**: Base de datos relacional poderosa y escalable.
   - **Autenticación**: Gestión de usuarios basada en roles (Ciudadano, Reciclador, Trabajador, Admin).
 - **Integraciones**:
-  - **Google Maps API**: Mapas interactivos, geolocalización y visualización de rutas/marcadores.
+  - [Leaflet](https://leafletjs.com/): Motor de mapas interactivos de código abierto.
+  - [React Leaflet](https://react-leaflet.js.org/): Abstracción de Leaflet para React.
+  - [Leaflet Routing Machine](http://www.liedman.net/leaflet-routing-machine/): Control de rutas y navegación en tiempo real.
+  - [Leaflet.heat](https://github.com/Leaflet/Leaflet.heat): Capa de mapas de calor para visualización de densidad.
+  - [CartoDB Dark Matter](https://carto.com/help/working-with-data/carto-basemaps/): Tiles de mapas con estética dark premium.
 
 ---
 
@@ -70,14 +89,23 @@ npm install
 ```
 
 ### 3. Configuración de Entorno
-Crea un proyecto en [Supabase](https://supabase.com/) y obtén tus credenciales. Asegúrate de configurar también tu API Key de **Google Maps**.
+
+Crea un proyecto en [Supabase](https://supabase.com/) y obtén tus credenciales. 
 
 Crea un archivo `.env` en la raíz del proyecto y añade las siguientes variables:
+
+| Variable | Descripción |
+| :--- | :--- |
+| `VITE_SUPABASE_URL` | URL de tu proyecto en Supabase |
+| `VITE_SUPABASE_ANON_KEY` | Clave anónima (public) de Supabase |
+
 ```env
 VITE_SUPABASE_URL="TU_SUPABASE_URL"
 VITE_SUPABASE_ANON_KEY="TU_SUPABASE_ANON_KEY"
-VITE_GOOGLE_MAPS_API_KEY="TU_GOOGLE_MAPS_API_KEY"
 ```
+
+> [!NOTE]
+> Ya no se requiere una API Key de Google Maps, ya que el sistema utiliza **Leaflet** con proveedores de mapas abiertos.
 
 ### 4. Ejecutar en Desarrollo
 ```bash
@@ -92,14 +120,17 @@ npm run dev
 EcoRute/
 ├── public/                 # Recursos estáticos (Favicon, Iconos)
 ├── src/
-│   ├── components/         # Componentes reutilizables (EcoMap, Toast)
-│   ├── views/              # Vistas principales separadas por rol (Admin, Ciudadano, Reciclador, Trabajador)
-│   ├── supabase.js         # Configuración y cliente de Supabase
-│   ├── utils.js            # Funciones de utilidad y helpers
-│   ├── constants.js        # Constantes globales de la aplicación
-│   ├── App.jsx             # Router, layout principal y gestión de estado de autenticación
-│   ├── index.css           # Estilos globales y configuración de Tailwind
-│   └── main.jsx            # Punto de entrada de la aplicación
+│   ├── components/         # Componentes reutilizables
+│   │   ├── EcoMap.jsx      # Motor de mapas dinámico (Leaflet)
+│   │   ├── ImageModal.jsx  # Visor de imágenes de reportes
+│   │   └── ...             # Otros componentes UI
+│   ├── views/              # Vistas principales separadas por rol
+│   ├── supabase.js         # Cliente y configuración de Supabase
+│   ├── utils.js            # Funciones de utilidad (formateo, lógica de negocio)
+│   ├── constants.js        # Configuración global y coordenadas
+│   ├── App.jsx             # Router y gestión de estado global
+│   ├── index.css           # Design System y Tailwind 4
+│   └── main.jsx            # Punto de entrada
 ├── .env                    # Variables de entorno (No incluido en el repo)
 └── package.json            # Dependencias y scripts
 ```
@@ -118,10 +149,19 @@ EcoRute/
 
 ---
 
+## Próximos Pasos (Roadmap)
+
+- [ ] **IA para Clasificación**: Implementación de modelos para identificar tipos de residuos mediante fotos.
+- [ ] **Sistema de Gamificación**: Puntos y recompensas para ciudadanos que reciclan activamente.
+- [ ] **Reportes en PDF**: Generación automática de informes mensuales para entidades gubernamentales.
+- [ ] **Modo Offline**: Registro de reportes sin conexión para zonas con baja cobertura.
+
+---
+
 ## Contacto
 
 [Repositorio del Proyecto](https://github.com/Jawuj/EcoRute)
 
 ---
 
-*EcoRuta Inteligente - Transformando el reciclaje urbano con tecnología.*
+*EcoRuta Inteligente - Transformando el reciclaje urbano con tecnología avanzada.*
