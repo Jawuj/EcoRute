@@ -215,7 +215,7 @@ export function AdminView({ user, showToast }) {
                 </div>
               </div>
               
-              <div className="h-[400px] md:aspect-video bg-black/40 border border-white/5 rounded-3xl md:rounded-[2rem] relative overflow-hidden">
+              <div className="h-[400px] md:aspect-video bg-black/40 border border-white/5 rounded-3xl md:rounded-[2rem] relative overflow-hidden isolate">
                 <EcoMap points={reports} showHeatmap={showHeatmap} userRole="admin" />
               </div>
             </div>
@@ -225,7 +225,7 @@ export function AdminView({ user, showToast }) {
                 <h3 className="text-2xl font-black tracking-tight text-white uppercase italic">Gestionar Equipo</h3>
                 <p className="text-xs text-gray-500 font-bold">Crea nuevas cuentas para trabajadores de campo.</p>
               </div>
-              <WorkerForm />
+              <WorkerForm showToast={showToast} />
             </div>
           </div>
         </>
@@ -351,9 +351,11 @@ export function AdminView({ user, showToast }) {
   );
 }
 
-function WorkerForm() {
+function WorkerForm({ showToast }) {
   const [nombre, setNombre] = useState('');
   const [password, setPassword] = useState('');
+  const [empresa, setEmpresa] = useState('');
+  const [documento, setDocumento] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -365,12 +367,14 @@ function WorkerForm() {
     try {
       const { error } = await supabase
         .from('usuarios')
-        .insert([{ nombre, password, rol: 'trabajador' }]);
+        .insert([{ nombre, password, rol: 'trabajador', empresa, documento }]);
 
       if (error) throw error;
       setSuccess(true);
       setNombre('');
       setPassword('');
+      setEmpresa('');
+      setDocumento('');
       showToast("¡Trabajador registrado con éxito!");
     } catch (err) {
       showToast("Error al crear trabajador: " + err.message, 'error');
@@ -386,6 +390,22 @@ function WorkerForm() {
         placeholder="Nombre del trabajador" 
         value={nombre}
         onChange={(e) => setNombre(e.target.value)}
+        className="w-full bg-white/5 border-white/10 text-sm"
+        required
+      />
+      <input 
+        type="text" 
+        placeholder="Documento de Identidad" 
+        value={documento}
+        onChange={(e) => setDocumento(e.target.value)}
+        className="w-full bg-white/5 border-white/10 text-sm"
+        required
+      />
+      <input 
+        type="text" 
+        placeholder="Empresa Contratista" 
+        value={empresa}
+        onChange={(e) => setEmpresa(e.target.value)}
         className="w-full bg-white/5 border-white/10 text-sm"
         required
       />

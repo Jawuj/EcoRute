@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Camera, MapPin, Send, Trash2, Box, Wine, CheckCircle, Trash, AlertTriangle, Biohazard } from 'lucide-react';
+import { Camera as CameraIcon, MapPin, Send, Trash2, Box, Wine, CheckCircle, Trash, AlertTriangle, Biohazard, Image as ImageIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabase';
 import { EcoMap } from '../components/EcoMap';
+import { Camera as CapCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 
 export function CiudadanoView({ user, showToast }) {
   const [material, setMaterial] = useState('');
@@ -76,9 +77,24 @@ export function CiudadanoView({ user, showToast }) {
     { id: 'biologico', name: 'Biológico', icon: Biohazard, color: 'from-emerald-400 to-emerald-600 shadow-emerald-500/20' },
   ];
 
-  const handleFileChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setImageFile(e.target.files[0]);
+  const takePhoto = async () => {
+    try {
+      const image = await CapCamera.getPhoto({
+        quality: 90,
+        allowEditing: false,
+        resultType: CameraResultType.Base64,
+        source: CameraSource.Prompt // Esto muestra el menú "Cámara o Galería" nativo
+      });
+
+      if (image) {
+        // Convertir base64 a File para reutilizar la lógica de subida
+        const response = await fetch(`data:image/${image.format};base64,${image.base64String}`);
+        const blob = await response.blob();
+        const file = new File([blob], `reporte_${Date.now()}.${image.format}`, { type: `image/${image.format}` });
+        setImageFile(file);
+      }
+    } catch (err) {
+      console.warn("Cámara cancelada o error:", err);
     }
   };
 
@@ -197,7 +213,7 @@ export function CiudadanoView({ user, showToast }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="glass-panel p-8 space-y-8">
           <form onSubmit={handleReport} className="space-y-8">
-            <div className="space-y-4">
+            <div id="step-materials" className="space-y-4">
               <label className="block text-xs font-black uppercase tracking-[0.2em] text-white/80">1. Tipo de Residuo</label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
                 {materials.map((m) => (
@@ -216,21 +232,19 @@ export function CiudadanoView({ user, showToast }) {
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div id="step-camera" className="space-y-4">
               <label className="block text-xs font-black uppercase tracking-[0.2em] text-white/80">2. Evidencia (Obligatoria)</label>
-              <label className="group relative p-6 border-2 border-dashed border-white/5 rounded-3xl flex items-center gap-4 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all cursor-pointer overflow-hidden">
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  onChange={handleFileChange}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                />
+              <button 
+                type="button"
+                onClick={takePhoto}
+                className="group relative p-6 border-2 border-dashed border-white/5 rounded-3xl flex items-center gap-4 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all cursor-pointer overflow-hidden w-full"
+              >
                 <div className="p-3 bg-white/5 rounded-xl group-hover:scale-110 transition-transform">
-                  <Camera size={24} className={imageFile ? "text-green-400" : "text-gray-400 group-hover:text-blue-400"} />
+                  <CameraIcon size={24} className={imageFile ? "text-green-400" : "text-white/70 group-hover:text-blue-400"} />
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 text-left">
                   <span className="text-xs font-bold uppercase tracking-widest text-white/80 group-hover:text-white block">
-                    {imageFile ? "Imagen Seleccionada" : "Subir Fotografía"}
+                    {imageFile ? "Imagen Seleccionada" : "Tomar Foto o Subir Galería"}
                   </span>
                   {imageFile && (
                     <span className="text-[10px] text-green-400 font-mono truncate block max-w-[200px]">
@@ -238,7 +252,7 @@ export function CiudadanoView({ user, showToast }) {
                     </span>
                   )}
                 </div>
-              </label>
+              </button>
             </div>
 
             <AnimatePresence mode="wait">
@@ -269,7 +283,7 @@ export function CiudadanoView({ user, showToast }) {
           </form>
         </div>
 
-        <div className="glass-panel p-0 overflow-hidden relative border-white/5 flex flex-col">
+        <div id="step-map" className="glass-panel p-0 overflow-hidden relative border-white/5 flex flex-col">
           <div className="p-6 border-b border-white/5 flex items-center justify-between">
             <div>
               <h3 className="text-sm font-black uppercase tracking-widest">Punto de Recogida</h3>
@@ -307,7 +321,7 @@ export function CiudadanoView({ user, showToast }) {
         </div>
       </div>
 
-      <div className="glass-panel p-8 bg-blue-600/10 border-blue-500/20 flex items-center gap-6">
+      <div id="step-impact" className="glass-panel p-8 bg-blue-600/10 border-blue-500/20 flex items-center gap-6">
         <div className="p-4 bg-blue-600 rounded-2xl">
           <Trash2 className="text-white" size={24} />
         </div>

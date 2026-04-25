@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Truck, CheckCircle, MapPin, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabase';
@@ -9,13 +9,14 @@ import { ImageModal } from '../components/ImageModal';
 
 export function RecicladorView({ user, showToast }) {
   const [pickups, setPickups] = useState([]);
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [routeInfo, setRouteInfo] = useState(null);
   const [activePickup, setActivePickup] = useState(null);
   const [isNavigating, setIsNavigating] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
-  const [showCompleted, setShowCompleted] = useState(false);
-  const [routeInfo, setRouteInfo] = useState(null);
   const [isMapFull, setIsMapFull] = useState(false);
   const [modalImage, setModalImage] = useState(null); // Nuevo filtro
+  const mapRef = useRef(null);
 
   const [userHeading, setUserHeading] = useState(0);
 
@@ -121,13 +122,13 @@ export function RecicladorView({ user, showToast }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-10rem)] relative">
       {/* Lista de Reportes Pendientes */}
-      <div className={`lg:col-span-1 flex flex-col gap-4 overflow-hidden ${isMapFull ? 'hidden lg:flex' : ''}`}>
+      <div id="step-list" className={`lg:col-span-1 flex flex-col gap-4 overflow-hidden ${isMapFull ? 'hidden lg:flex' : ''}`}>
         <header className="flex justify-between items-end px-2">
           <div className="space-y-0.5">
             <h2 className="text-2xl font-black tracking-tighter text-white uppercase">Rutas</h2>
             <p className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-500">Gestión de puntos</p>
           </div>
-          <div className="flex flex-col items-end gap-2">
+          <div id="step-filters" className="flex flex-col items-end gap-2">
             <div className="flex gap-2">
               <button 
                 onClick={requestOrientationPermission}
@@ -212,7 +213,19 @@ export function RecicladorView({ user, showToast }) {
                       </div>
                     )}
                     <button 
-                      onClick={(e) => { e.stopPropagation(); setActivePickup(pickup); }}
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        setActivePickup(pickup); 
+                        setIsMapFull(true);
+                        setIsNavigating(true);
+                        setRouteInfo(null);
+                        if (mapRef.current) {
+                          mapRef.current.toggleFullscreen(true);
+                          setTimeout(() => {
+                            if (mapRef.current) mapRef.current.panToUser();
+                          }, 100);
+                        }
+                      }}
                       className="btn-eco btn-outline px-4 py-2"
                     >
                       VER MAPA
@@ -225,16 +238,28 @@ export function RecicladorView({ user, showToast }) {
         </div>
       </div>
 
-        <div className={`transition-all duration-500 relative ${isMapFull ? 'fixed inset-0 z-[5000] p-0' : 'lg:col-span-2 glass-panel border-white/5 overflow-hidden'}`}>
+        <div id="step-map-view" className="lg:col-span-2 glass-panel border-white/5 overflow-hidden relative transition-all duration-500 h-[60dvh] lg:h-auto min-h-[400px]">
           <EcoMap 
+            ref={mapRef}
             points={filteredPickups} 
             center={activePickup?.ubicacion || userLocation || MEDELLIN_COORDS} 
             zoom={14} 
             userLocation={userLocation}
             userHeading={userHeading}
             routeTarget={isNavigating ? activePickup?.ubicacion : null}
+            externalFullscreen={isMapFull}
+            onFullscreenChange={(v) => setIsMapFull(v)}
             onRouteFound={(info) => setRouteInfo(info)}
-            onMarkerClick={(pickup) => { setActivePickup(pickup); setIsNavigating(true); setRouteInfo(null); }}
+            onMarkerClick={(pickup) => { 
+              setActivePickup(pickup); 
+              setIsNavigating(true); 
+              setRouteInfo(null); 
+              if (mapRef.current) {
+                setTimeout(() => {
+                  if (mapRef.current) mapRef.current.panToUser();
+                }, 100);
+              }
+            }}
           >
 
             {activePickup && (
@@ -243,8 +268,8 @@ export function RecicladorView({ user, showToast }) {
                 animate={{ y: 0 }}
                 className="absolute bottom-4 left-4 right-4 glass-panel p-4 md:p-6 bg-black/80 backdrop-blur-2xl border-green-500/30 flex flex-col items-center justify-between gap-3 md:gap-6 z-[9999] shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden"
               >
-                <div className="flex flex-col md:flex-row items-center justify-between gap-6 w-full">
-                  <div className="flex items-center gap-4 md:gap-6">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6 w-full flex-wrap">
+                  <div className="flex items-center gap-3 md:gap-6 w-full md:w-auto shrink-0 max-w-full">
                     {activePickup.imagen_url && (
                       <img 
                         src={activePickup.imagen_url} 
@@ -253,29 +278,30 @@ export function RecicladorView({ user, showToast }) {
                         onClick={() => setModalImage(activePickup.imagen_url)}
                       />
                     )}
-                    <div>
-                      <p className="text-[8px] md:text-[10px] font-black text-green-500 uppercase tracking-widest text-center md:text-left">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[8px] md:text-[10px] font-black text-green-500 uppercase tracking-widest text-left">
                         {activePickup.items?.length > 1 ? `Punto Múltiple (${activePickup.items.length} reportes)` : 'Recogida Requerida'}
                       </p>
-                      <h3 className="text-base md:text-xl font-black uppercase text-center md:text-left">
+                      <h3 className="text-sm md:text-xl font-black uppercase text-left truncate">
                         {activePickup.items?.length > 1 ? 'Varios Materiales' : `Material: ${activePickup.material}`}
                       </h3>
                       {isNavigating && routeInfo && (
-                        <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest mt-1 text-center md:text-left">
+                        <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest mt-1 text-left">
                           {routeInfo.time} min ({routeInfo.distance} km)
                         </p>
                       )}
                     </div>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                  <div className="flex flex-row gap-2 w-full md:w-auto shrink-0 justify-end mt-2 md:mt-0">
                     <button 
                       onClick={() => { 
                         setIsNavigating(false); 
                         setRouteInfo(null); 
                         setActivePickup(null);
+                        setIsMapFull(false);
                       }}
-                      className="px-6 py-3 md:px-8 md:py-4 bg-red-500/10 text-red-500 text-xs md:text-sm font-black rounded-2xl border border-red-500/20 hover:bg-red-500 hover:text-white transition-all shadow-xl"
+                      className="px-4 md:px-8 py-3 md:py-4 bg-red-500/10 text-red-500 text-[10px] md:text-sm font-black rounded-2xl border border-red-500/20 hover:bg-red-500 hover:text-white transition-all shadow-xl whitespace-nowrap"
                     >
                       CANCELAR RUTA
                     </button>

@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
-import { Maximize2, Minimize2, Sun, Moon } from 'lucide-react';
+import { Maximize2, Minimize2, Sun, Moon, Navigation } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet-routing-machine';
 import 'leaflet.heat';
@@ -35,16 +35,16 @@ function HeatmapLayer({ points }) {
     const heatData = points
       .filter(p => p.ubicacion && p.ubicacion.lat && p.ubicacion.lng)
       .map(p => [
-        p.ubicacion.lat, 
-        p.ubicacion.lng, 
+        p.ubicacion.lat,
+        p.ubicacion.lng,
         IMPACT_FACTORS[p.material]?.weight || IMPACT_FACTORS.default.weight
-      ]); 
+      ]);
 
     const heatLayer = L.heatLayer(heatData, {
       radius: 30,
       blur: 20,
       maxZoom: 17,
-      gradient: { 
+      gradient: {
         0.2: '#10b981', // Verde (Baja)
         0.6: '#f59e0b', // Naranja (Media)
         1.0: '#ef4444'  // Rojo (Alta)
@@ -86,7 +86,7 @@ function Routing({ origin, destination, userRole, onRouteFound }) {
     // Patch de seguridad: Evitar error "removeLayer of null" interno de LRM
     const originalClearLines = control._clearLines;
     if (originalClearLines) {
-      control._clearLines = function() {
+      control._clearLines = function () {
         if (this._map) {
           originalClearLines.apply(this, arguments);
         }
@@ -204,12 +204,12 @@ const createCustomIcon = (material, estado, isUser = false, userRole = '', rotat
     ${count > 1 ? `<div style="position: absolute; top: -10px; right: -10px; background: #ef4444; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 900; border: 2px solid white; z-index: 100; box-shadow: 0 4px 10px rgba(239, 68, 68, 0.4);">${count}</div>` : ''}
     ${!isUser ? `<span style="background: ${color}; color: black; font-size: 8px; font-weight: 900; padding: 1px 4px; border-radius: 4px; margin-top: 2px; text-transform: uppercase;">${material === 'multiple' ? 'Múltiples' : material}</span>` : ''}
   </div>`;
-  
+
   return L.divIcon({
     html: svg,
     className: 'custom-leaflet-icon',
     iconSize: [size, size + 15],
-    iconAnchor: [size/2, size/2 + 7],
+    iconAnchor: [size / 2, size / 2 + 7],
   });
 };
 
@@ -219,9 +219,18 @@ function AutoFollow({ userLocation, active }) {
   const map = useMap();
   useEffect(() => {
     if (active && userLocation) {
-      map.panTo([userLocation.lat, userLocation.lng], { animate: true });
+      map.setView([userLocation.lat, userLocation.lng], 16, { animate: false });
     }
   }, [map, userLocation, active]);
+  return null;
+}
+
+// Componente para extraer la instancia del mapa de forma segura
+function MapController({ onMapLoaded }) {
+  const map = useMap();
+  useEffect(() => {
+    if (map) onMapLoaded(map);
+  }, [map, onMapLoaded]);
   return null;
 }
 
@@ -255,55 +264,92 @@ function ResizeMap() {
   return null;
 }
 
-export function EcoMap({ 
-  children, 
-  points = [], 
-  center = MEDELLIN_COORDS, 
-  zoom = 13, 
-  onMapClick, 
-  onMarkerClick, 
-  onRouteFound, 
-  routeTarget = null, 
-  showHeatmap = false, 
-  userRole = 'ciudadano', 
+export const EcoMap = forwardRef(({
+  children,
+  points = [],
+  center = MEDELLIN_COORDS,
+  zoom = 13,
+  onMapClick,
+  onMarkerClick,
+  onRouteFound,
+  routeTarget = null,
+  showHeatmap = false,
+  userRole = 'ciudadano',
   userLocation = null,
-  userHeading = 0 // Nueva prop para la orientación
-}) {
+  userHeading = 0,
+  externalFullscreen = undefined,
+  onFullscreenChange = null
+}, ref) => {
   const containerRef = useRef(null);
+  const mapInstanceRef = useRef(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isPseudoFullscreen, setIsPseudoFullscreen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
 
-  const toggleFullscreen = () => {
+  const onFullscreenChangeRef = useRef(onFullscreenChange);
+
+  useEffect(() => {
+    onFullscreenChangeRef.current = onFullscreenChange;
+  }, [onFullscreenChange]);
+
+  const toggleFullscreen = (force) => {
     const element = containerRef.current;
-    
-    // Intento de Fullscreen Real
-    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+
+    let targetState;
+    if (typeof force === 'boolean') {
+      targetState = force;
+    } else {
+      targetState = !document.fullscreenElement && !document.webkitFullscreenElement && !isPseudoFullscreen;
+    }
+
+    if (targetState) {
       const requestMethod = element.requestFullscreen || element.webkitRequestFullscreen || element.mozRequestFullScreen || element.msRequestFullscreen;
-      
+
       if (requestMethod) {
         requestMethod.call(element).catch(() => {
-          // Si falla (común en iPhone), usamos pseudo-fullscreen
           setIsPseudoFullscreen(true);
         });
         setIsFullscreen(true);
       } else {
-        // Fallback inmediato para iOS
         setIsPseudoFullscreen(true);
       }
+      if (onFullscreenChange) onFullscreenChange(true);
     } else {
       const exitMethod = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
-      if (exitMethod) exitMethod.call(document);
+      if (document.fullscreenElement || document.webkitFullscreenElement) {
+        if (exitMethod) exitMethod.call(document);
+      }
       setIsFullscreen(false);
       setIsPseudoFullscreen(false);
+      if (onFullscreenChange) onFullscreenChange(false);
     }
   };
+
+  useImperativeHandle(ref, () => ({
+    toggleFullscreen: (force) => toggleFullscreen(force),
+    panToUser: () => {
+      if (userLocation && mapInstanceRef.current) {
+        mapInstanceRef.current.setView([userLocation.lat, userLocation.lng], 16, { animate: false });
+      }
+    }
+  }));
+
+  useEffect(() => {
+    if (externalFullscreen !== undefined) {
+      if (externalFullscreen && !isFullscreen && !isPseudoFullscreen) {
+        toggleFullscreen(true);
+      } else if (!externalFullscreen && (isFullscreen || isPseudoFullscreen)) {
+        toggleFullscreen(false);
+      }
+    }
+  }, [externalFullscreen]);
 
   useEffect(() => {
     const handler = () => {
       const isFull = !!(document.fullscreenElement || document.webkitFullscreenElement);
       setIsFullscreen(isFull);
       if (!isFull) setIsPseudoFullscreen(false);
+      if (onFullscreenChangeRef.current) onFullscreenChangeRef.current(isFull);
     };
     document.addEventListener('fullscreenchange', handler);
     document.addEventListener('webkitfullscreenchange', handler);
@@ -325,21 +371,22 @@ export function EcoMap({
   } : {};
 
   return (
-    <div 
-      ref={containerRef} 
+    <div
+      ref={containerRef}
       style={pseudoFullscreenStyles}
-      className={`w-full h-full relative overflow-hidden bg-[#111827] transition-all duration-300 ${isFullscreen || isPseudoFullscreen ? '' : 'rounded-[2rem]'}`}
+      className={`w-full h-full relative overflow-hidden bg-[#111827] transition-all duration-300 ${isFullscreen || isPseudoFullscreen ? '' : 'rounded-[inherit]'}`}
     >
-      <MapContainer 
-        center={[center.lat, center.lng]} 
-        zoom={zoom} 
+      <MapContainer
+        center={[center.lat, center.lng]}
+        zoom={zoom}
         scrollWheelZoom={true}
         className="w-full h-full"
         zoomControl={false}
         attributionControl={false}
       >
+        <MapController onMapLoaded={(map) => { mapInstanceRef.current = map; }} />
         <TileLayer
-          url={isDarkMode 
+          url={isDarkMode
             ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
             : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
           }
@@ -351,7 +398,7 @@ export function EcoMap({
         <Recenter center={center} disabled={!!routeTarget} />
         <ResizeMap />
         <MapClickHandler onClick={onMapClick} />
-        
+
         {/* Auto-seguir al usuario en navegación */}
         <AutoFollow userLocation={userLocation} active={!!routeTarget} />
 
@@ -376,15 +423,15 @@ export function EcoMap({
           }, {});
 
           return Object.values(groups).map((point, idx) => (
-            <Marker 
-              key={idx} 
+            <Marker
+              key={idx}
               position={[point.ubicacion.lat, point.ubicacion.lng]}
               icon={createCustomIcon(
-                point.count > 1 && point.materials.length > 1 ? 'multiple' : point.material, 
-                point.estado, 
-                false, 
-                '', 
-                0, 
+                point.count > 1 && point.materials.length > 1 ? 'multiple' : point.material,
+                point.estado,
+                false,
+                '',
+                0,
                 point.count
               )}
               zIndexOffset={1000 + point.count}
@@ -400,7 +447,7 @@ export function EcoMap({
 
         {/* Marcador del Usuario con Rotación */}
         {userLocation && userRole !== 'admin' && (
-          <Marker 
+          <Marker
             position={[userLocation.lat, userLocation.lng]}
             icon={createCustomIcon(null, null, true, userRole, userHeading)}
           />
@@ -408,10 +455,10 @@ export function EcoMap({
 
         {/* Ruta en tiempo real (Modo Uber) */}
         {routeTarget && userLocation && (
-          <Routing 
-            origin={userLocation} 
-            destination={routeTarget} 
-            userRole={userRole} 
+          <Routing
+            origin={userLocation}
+            destination={routeTarget}
+            userRole={userRole}
             onRouteFound={onRouteFound}
           />
         )}
@@ -420,30 +467,49 @@ export function EcoMap({
       {/* Renderizar contenido adicional (paneles de info) dentro del contenedor fullscreen */}
       {children}
 
-      {/* Botón de Pantalla Completa (Real API) */}
-      <button 
-        onClick={toggleFullscreen}
-        className="absolute top-4 left-4 p-4 bg-black/60 backdrop-blur-xl border border-white/10 text-white rounded-2xl shadow-2xl hover:scale-110 transition-all z-[9999] group"
-        title="Pantalla Completa"
-      >
-        {isFullscreen || isPseudoFullscreen ? <Minimize2 size={24} /> : <Maximize2 size={24} />}
-        <span className="absolute left-full ml-4 top-1/2 -translate-y-1/2 px-3 py-1 bg-black text-[10px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-          {(isFullscreen || isPseudoFullscreen) ? 'Salir Fullscreen' : 'Pantalla Completa'}
-        </span>
-      </button>
-      
-      {/* Botón de Modo Claro/Oscuro */}
-      <button 
-        onClick={() => setIsDarkMode(!isDarkMode)}
-        className="absolute top-24 left-4 p-4 bg-black/60 backdrop-blur-xl border border-white/10 text-white rounded-2xl shadow-2xl hover:scale-110 transition-all z-[9999] group"
-        title={isDarkMode ? "Modo Claro" : "Modo Oscuro"}
-      >
-        {isDarkMode ? <Sun size={24} /> : <Moon size={24} />}
-        <span className="absolute left-full ml-4 top-1/2 -translate-y-1/2 px-3 py-1 bg-black text-[10px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-          {isDarkMode ? 'Modo Claro' : 'Modo Oscuro'}
-        </span>
-      </button>
+      {/* Controles del Mapa */}
+      <div id="step-map-controls" className="absolute top-4 left-4 z-[9999] flex flex-col gap-4">
+        {/* Botón de Pantalla Completa (Real API) */}
+        <button
+          onClick={toggleFullscreen}
+          className="p-4 bg-black/60 backdrop-blur-xl border border-white/10 text-white rounded-2xl shadow-2xl hover:scale-110 transition-all group"
+          title="Pantalla Completa"
+        >
+          {isFullscreen || isPseudoFullscreen ? <Minimize2 size={24} /> : <Maximize2 size={24} />}
+          <span className="absolute left-full ml-4 top-1/2 -translate-y-1/2 px-3 py-1 bg-black text-[10px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+            {(isFullscreen || isPseudoFullscreen) ? 'Salir Fullscreen' : 'Pantalla Completa'}
+          </span>
+        </button>
+
+        {/* Botón de Modo Claro/Oscuro */}
+        <button
+          onClick={() => setIsDarkMode(!isDarkMode)}
+          className="p-4 bg-black/60 backdrop-blur-xl border border-white/10 text-white rounded-2xl shadow-2xl hover:scale-110 transition-all group"
+          title={isDarkMode ? "Modo Claro" : "Modo Oscuro"}
+        >
+          {isDarkMode ? <Sun size={24} /> : <Moon size={24} />}
+          <span className="absolute left-full ml-4 top-1/2 -translate-y-1/2 px-3 py-1 bg-black text-[10px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+            {isDarkMode ? 'Modo Claro' : 'Modo Oscuro'}
+          </span>
+        </button>
+        {/* Botón de Ir a Mi Ubicación */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (userLocation && mapInstanceRef.current) {
+              mapInstanceRef.current.setView([userLocation.lat, userLocation.lng], 16, { animate: true });
+            }
+          }}
+          className="p-4 bg-black/60 backdrop-blur-xl border border-white/10 text-white rounded-2xl shadow-2xl hover:scale-110 transition-all group"
+          title="Ir a mi ubicación"
+        >
+          <Navigation size={24} className="text-blue-400" />
+          <span className="absolute left-full ml-4 top-1/2 -translate-y-1/2 px-3 py-1 bg-black text-[10px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+            Mi Ubicación
+          </span>
+        </button>
+      </div>
     </div>
   );
-}
+});
 

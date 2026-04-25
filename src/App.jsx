@@ -10,6 +10,7 @@ import { EcoMap } from './components/EcoMap';
 import { ToastContainer } from './components/Toast.jsx';
 import { Logo } from './components/Logo';
 import wallpaper from './assets/wallpaperinicio.png';
+import { TutorialOverlay, HelpButton } from './components/TutorialOverlay';
 
 export default function App() {
   const [user, setUser] = useState(() => {
@@ -19,6 +20,7 @@ export default function App() {
   const [name, setName] = useState('');
   const [role, setRole] = useState(null);
   const [password, setPassword] = useState('');
+  const [documento, setDocumento] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -51,7 +53,8 @@ export default function App() {
       const { data: usuario, error: sbError } = await supabase
         .from('usuarios')
         .select('*')
-        .eq('nombre', name)
+        .or(`nombre.eq.${name},documento.eq.${name}`)
+        .eq('password', password)
         .eq('rol', role)
         .single();
 
@@ -73,8 +76,8 @@ export default function App() {
       return;
     }
 
-    if (role === 'admin') {
-      setError('No se permite registrar nuevas cuentas de Administrador.');
+    if (role === 'admin' || role === 'trabajador') {
+      setError('No se permite registrar cuentas de Administrador o Trabajador desde aquí.');
       return;
     }
 
@@ -83,7 +86,7 @@ export default function App() {
     try {
       const { data, error: sbError } = await supabase
         .from('usuarios')
-        .insert([{ nombre: name, password, rol: role }])
+        .insert([{ nombre: name, password, rol: role, documento }])
         .select()
         .single();
 
@@ -130,18 +133,18 @@ export default function App() {
               <Logo className="w-16 h-16" />
               <h1 className="text-4xl font-black tracking-tighter">ECO RUTA</h1>
             </div>
-            <div className="flex gap-2 p-1 bg-white/5 rounded-2xl border border-white/10">
+            <div className="flex gap-1 p-1 bg-white/5 rounded-2xl border border-white/10 w-fit max-w-full">
               <button 
                 onClick={() => setIsRegistering(false)}
-                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!isRegistering ? 'bg-white text-black' : 'text-white/80'}`}
+                className={`px-3 sm:px-4 py-2 rounded-xl text-[9px] sm:text-[10px] font-black tracking-widest transition-all whitespace-nowrap ${!isRegistering ? 'bg-white text-black shadow-lg' : 'text-gray-500 hover:text-white'}`}
               >
-                Entrar
+                ENTRAR
               </button>
               <button 
                 onClick={() => setIsRegistering(true)}
-                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isRegistering ? 'bg-white text-black' : 'text-white/80'}`}
+                className={`px-3 sm:px-4 py-2 rounded-xl text-[9px] sm:text-[10px] font-black tracking-widest transition-all whitespace-nowrap ${isRegistering ? 'bg-white text-black shadow-lg' : 'text-gray-500 hover:text-white'}`}
               >
-                Registrar
+                REGISTRAR
               </button>
             </div>
           </div>
@@ -150,16 +153,32 @@ export default function App() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-white/80 ml-1">Tu Identificación</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-white/80 ml-1">
+                    {isRegistering ? 'Tu Nombre' : 'Tu Identificación (Nombre o Documento)'}
+                  </label>
                   <input
                     type="text"
-                    placeholder="Ej: Juan Pérez"
+                    placeholder={isRegistering ? "Ej: Juan Pérez" : "Ej: Juan Pérez o 12345678"}
                     className="w-full py-3 text-base"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
                   />
                 </div>
+
+                {isRegistering && (
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-white/80 ml-1">Tu Identificación (Documento)</label>
+                    <input
+                      type="text"
+                      placeholder="Ej: 12345678"
+                      className="w-full py-3 text-base bg-white/10"
+                      value={documento}
+                      onChange={(e) => setDocumento(e.target.value)}
+                      required
+                    />
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-white/80 ml-1">Contraseña</label>
@@ -183,7 +202,7 @@ export default function App() {
                 <label className="text-[10px] font-black uppercase tracking-widest text-white/80 ml-1">Selecciona tu Perfil</label>
                 <div className="grid grid-cols-2 gap-3">
                   {roleConfigs
-                    .filter(cfg => !isRegistering || !cfg.secure || cfg.id !== 'admin')
+                    .filter(cfg => !isRegistering || !cfg.secure)
                     .map((cfg) => (
                     <button
                       key={cfg.id}
@@ -263,10 +282,10 @@ export default function App() {
       <nav className="p-6 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto glass-panel px-8 py-5 flex justify-between items-center bg-black/40">
           <div className="flex items-center gap-4">
-            <Logo className="w-12 h-12" />
             <div className={`p-3 rounded-2xl ${activeRole.bg} border-2 ${activeRole.border}`}>
               <activeRole.icon className={activeRole.color} size={24} />
             </div>
+            <Logo className="w-12 h-12" />
             <div>
               <h2 className="text-2xl font-black tracking-tighter leading-none">ECO RUTA</h2>
               <p className="text-[10px] font-bold uppercase tracking-[0.3em] opacity-40 mt-1">{user.role}</p>
@@ -291,9 +310,9 @@ export default function App() {
         <AnimatePresence mode="wait">
           <motion.div
             key={user.role}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
           >
             {user.role === 'ciudadano' && <CiudadanoView user={user} showToast={showToast} />}
@@ -303,6 +322,14 @@ export default function App() {
           </motion.div>
         </AnimatePresence>
       </main>
+      <TutorialOverlay role={user.role} />
+      {(user.role === 'ciudadano' || user.role === 'reciclador') && (
+        <HelpButton onClick={() => {
+          localStorage.removeItem(`has_seen_tutorial_${user.role}`);
+          window.location.reload();
+        }} />
+      )}
+
       <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
