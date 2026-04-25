@@ -99,6 +99,38 @@ const steps = {
       content: 'Ya conoces EcoRuta. Si necesitas ver el tutorial de nuevo, presiona este botón azul en cualquier momento.',
       icon: HelpCircle
     }
+  ],
+  admin: [
+    {
+      target: 'step-admin-nav',
+      title: 'Panel de Navegación',
+      content: 'Usa estas pestañas para alternar entre el Dashboard principal, el Ranking, la gestión de Usuarios y la tabla detallada de Reportes.',
+      icon: Sparkles
+    },
+    {
+      target: 'step-admin-stats',
+      title: 'Métricas Generales',
+      content: 'Aquí tienes un resumen del impacto global: usuarios, kilos recuperados y huella de carbono mitigada.',
+      icon: Sparkles
+    },
+    {
+      target: 'step-admin-map',
+      title: 'Monitor Geoespacial',
+      content: 'Visualiza todos los reportes en tiempo real. Puedes usar el modo pantalla completa para mayor comodidad.',
+      icon: Sparkles
+    },
+    {
+      target: 'step-admin-filters',
+      title: 'Filtros de Mapa',
+      content: 'Filtra los reportes por tipo de material o por estado (Pendientes vs Atendidos), y activa el Mapa de Calor para ver zonas críticas.',
+      icon: Sparkles
+    },
+    {
+      target: 'step-help-btn',
+      title: '¡Listo! 🎉',
+      content: 'Ya conoces EcoRuta. Si necesitas ver el tutorial de nuevo, presiona este botón azul en cualquier momento.',
+      icon: HelpCircle
+    }
   ]
 };
 

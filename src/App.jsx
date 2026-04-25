@@ -90,7 +90,18 @@ export default function App() {
         .select()
         .single();
 
-      if (sbError) throw new Error("Error al registrar: " + sbError.message);
+      if (sbError) {
+        if (sbError.message.includes('duplicate key value')) {
+          if (sbError.message.includes('documento')) {
+            throw new Error("Ya existe una cuenta con este número de identificación.");
+          } else if (sbError.message.includes('nombre')) {
+            throw new Error("Este nombre ya está en uso. Por favor, utiliza otro o contacta a soporte si crees que es un error.");
+          }
+          throw new Error("Ya existe una cuenta con estos datos.");
+        }
+        throw new Error("No se pudo completar el registro. Intenta nuevamente más tarde.");
+      }
+      
       setUser({ id: data.id, name: data.nombre, role: data.rol });
       showToast("¡Cuenta creada con éxito!");
     } catch (err) {
@@ -243,14 +254,14 @@ export default function App() {
                 <button 
                   type="button"
                   onClick={() => setUser({ id: '11111111-1111-1111-1111-111111111111', name: 'Invitado', role: 'ciudadano' })}
-                  className="p-4 rounded-2xl border-2 border-green-500/20 bg-green-500/5 hover:bg-green-500/10 hover:border-green-500/40 transition-all flex flex-col items-center text-center gap-2 group"
+                  className="p-4 rounded-2xl border-2 border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 hover:border-blue-500/40 transition-all flex flex-col items-center text-center gap-2 group"
                 >
-                  <div className="p-2 bg-green-500 rounded-xl shadow-lg shadow-green-500/20 group-hover:scale-110 transition-transform">
+                  <div className="p-2 bg-blue-500 rounded-xl shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform">
                     <User size={20} className="text-black" />
                   </div>
                   <div>
                     <p className="text-sm font-black text-white leading-none">CIUDADANO</p>
-                    <p className="text-[8px] font-bold text-green-400/60 uppercase tracking-widest mt-1">Acceso Rápido</p>
+                    <p className="text-[8px] font-bold text-blue-400/60 uppercase tracking-widest mt-1">Acceso Rápido</p>
                   </div>
                 </button>
 
@@ -323,12 +334,10 @@ export default function App() {
         </AnimatePresence>
       </main>
       <TutorialOverlay role={user.role} />
-      {(user.role === 'ciudadano' || user.role === 'reciclador' || user.role === 'trabajador') && (
-        <HelpButton onClick={() => {
-          localStorage.removeItem(`has_seen_tutorial_${user.role}`);
-          window.location.reload();
-        }} />
-      )}
+      <HelpButton onClick={() => {
+        localStorage.removeItem(`has_seen_tutorial_${user.role}`);
+        window.location.reload();
+      }} />
 
       <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>

@@ -295,7 +295,7 @@ export function CiudadanoView({ user, showToast }) {
               <span className="text-[9px] font-black text-green-500 uppercase tracking-widest">GPS Activo</span>
             </div>
           </div>
-          <div className="flex-1 min-h-[300px] p-4 lg:p-6">
+          <div className="flex-1 min-h-[55dvh] lg:min-h-[400px] p-4 lg:p-6">
             <div className="w-full h-full rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl">
               <EcoMap 
                 points={[{ ubicacion: location, material: material }]} 
