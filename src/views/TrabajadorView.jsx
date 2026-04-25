@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Truck, CheckCircle, MapPin, Clock, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabase';
@@ -17,6 +17,7 @@ export function TrabajadorView({ user, showToast }) {
   const [routeInfo, setRouteInfo] = useState(null);
   const [isMapFull, setIsMapFull] = useState(false);
   const [modalImage, setModalImage] = useState(null);
+  const mapRef = useRef(null);
 
   const [userHeading, setUserHeading] = useState(0);
 
@@ -116,13 +117,13 @@ export function TrabajadorView({ user, showToast }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-10rem)] relative">
       {/* Lista de Tareas */}
-      <div className={`lg:col-span-1 flex flex-col gap-4 overflow-hidden ${isMapFull ? 'hidden lg:flex' : ''}`}>
+      <div id="step-list" className={`lg:col-span-1 flex flex-col gap-4 overflow-hidden ${isMapFull ? 'hidden lg:flex' : ''}`}>
         <header className="flex justify-between items-end px-2">
           <div className="space-y-0.5">
             <h2 className="text-2xl font-black tracking-tighter text-white uppercase">Agenda</h2>
             <p className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-500">Puntos de atención</p>
           </div>
-          <div className="flex flex-col items-end gap-2">
+          <div id="step-filters" className="flex flex-col items-end gap-2">
             <div className="flex gap-2">
               <button 
                 onClick={requestOrientationPermission}
@@ -212,7 +213,19 @@ export function TrabajadorView({ user, showToast }) {
                       </div>
                     )}
                     <button 
-                      onClick={(e) => { e.stopPropagation(); setActivePickup(pickup); }}
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        setActivePickup(pickup); 
+                        setIsMapFull(true);
+                        setIsNavigating(true);
+                        setRouteInfo(null);
+                        if (mapRef.current) {
+                          mapRef.current.toggleFullscreen(true);
+                          setTimeout(() => {
+                            if (mapRef.current) mapRef.current.panToUser();
+                          }, 100);
+                        }
+                      }}
                       className="btn-eco btn-outline px-4 py-2"
                     >
                       VER MAPA
@@ -229,8 +242,9 @@ export function TrabajadorView({ user, showToast }) {
       </div>
 
       {/* Mapa y Detalle */}
-      <div className={`transition-all duration-500 relative ${isMapFull ? 'fixed inset-0 z-[5000] p-0' : 'lg:col-span-2 glass-panel border-white/5 overflow-hidden'}`}>
+      <div id="step-map-view" className={`transition-all duration-500 relative ${isMapFull ? 'fixed inset-0 z-[5000] p-0' : 'lg:col-span-2 glass-panel border-white/5 overflow-hidden'}`}>
         <EcoMap 
+          ref={mapRef}
           points={filteredPickups} 
           center={activePickup?.ubicacion || userLocation || MEDELLIN_COORDS} 
           zoom={14} 
@@ -238,8 +252,19 @@ export function TrabajadorView({ user, showToast }) {
           userHeading={userHeading}
           showHeatmap={showHeatmap}
           routeTarget={isNavigating ? activePickup?.ubicacion : null}
+          externalFullscreen={isMapFull}
+          onFullscreenChange={(v) => setIsMapFull(v)}
           onRouteFound={(info) => setRouteInfo(info)}
-          onMarkerClick={(pickup) => { setActivePickup(pickup); setIsNavigating(true); setRouteInfo(null); }}
+          onMarkerClick={(pickup) => { 
+            setActivePickup(pickup); 
+            setIsNavigating(true); 
+            setRouteInfo(null); 
+            if (mapRef.current) {
+              setTimeout(() => {
+                if (mapRef.current) mapRef.current.panToUser();
+              }, 100);
+            }
+          }}
         >
 
           {activePickup && (

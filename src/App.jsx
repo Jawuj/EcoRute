@@ -323,7 +323,7 @@ export default function App() {
         </AnimatePresence>
       </main>
       <TutorialOverlay role={user.role} />
-      {(user.role === 'ciudadano' || user.role === 'reciclador') && (
+      {(user.role === 'ciudadano' || user.role === 'reciclador' || user.role === 'trabajador') && (
         <HelpButton onClick={() => {
           localStorage.removeItem(`has_seen_tutorial_${user.role}`);
           window.location.reload();

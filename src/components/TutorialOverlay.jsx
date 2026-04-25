@@ -51,7 +51,33 @@ const steps = {
     {
       target: 'step-map-controls',
       title: 'Visualización',
-      content: 'Cambia entre modo día/noche o usa la pantalla completa para navegar con comodidad.',
+      content: 'Cambia entre modo día/noche, usa la pantalla completa para navegar con comodidad o presiona la flecha para ubicarte en el mapa. ',
+      icon: Sparkles
+    }
+  ],
+  trabajador: [
+    {
+      target: 'step-map-view',
+      title: 'Mapa de Puntos',
+      content: 'Aquí verás todos los puntos de atención pendientes en la ciudad.',
+      icon: Sparkles
+    },
+    {
+      target: 'step-list',
+      title: 'Tu Agenda de Trabajo',
+      content: 'Gestiona tus tareas desde aquí. Haz clic en "VER MAPA" para iniciar la navegación a la zona.',
+      icon: Sparkles
+    },
+    {
+      target: 'step-filters',
+      title: 'Orientación',
+      content: 'Activa la brújula para orientarte mejor o filtra por puntos ya completados.',
+      icon: Sparkles
+    },
+    {
+      target: 'step-map-controls',
+      title: 'Controles de Mapa',
+      content: 'Cambia entre modo día/noche o usa la pantalla completa para trabajar con mayor comodidad.',
       icon: Sparkles
     }
   ]
@@ -90,7 +116,7 @@ export function TutorialOverlay({ role, onComplete }) {
 
       // Pequeño delay para asegurar que el layout se ha asentado (especialmente en móviles)
       const timeoutId = setTimeout(updateSpotlight, 100);
-      
+
       window.addEventListener('resize', updateSpotlight);
       window.addEventListener('scroll', updateSpotlight); // También al hacer scroll
       return () => {
@@ -127,20 +153,17 @@ export function TutorialOverlay({ role, onComplete }) {
 
   return (
     <div className="fixed inset-0 z-[10000] overflow-hidden pointer-events-none">
-      {/* Fondo con hueco (Spotlight) */}
+      {/* Spotlight redondeado con box-shadow */}
       <motion.div
-        className="absolute inset-0 bg-black/80"
+        className="absolute rounded-[1.5rem] pointer-events-none"
         animate={{
-          clipPath: `polygon(
-            0% 0%, 0% 100%, 
-            ${spotlightCoords.left}px 100%, 
-            ${spotlightCoords.left}px ${spotlightCoords.top}px, 
-            ${spotlightCoords.left + spotlightCoords.width}px ${spotlightCoords.top}px, 
-            ${spotlightCoords.left + spotlightCoords.width}px ${spotlightCoords.top + spotlightCoords.height}px, 
-            ${spotlightCoords.left}px ${spotlightCoords.top + spotlightCoords.height}px, 
-            ${spotlightCoords.left}px 100%, 
-            100% 100%, 100% 0%
-          )`
+          top: spotlightCoords.top,
+          left: spotlightCoords.left,
+          width: spotlightCoords.width,
+          height: spotlightCoords.height,
+        }}
+        style={{
+          boxShadow: '0 0 0 9999px rgba(0,0,0,0.85)'
         }}
         transition={{ type: 'spring', damping: 25, stiffness: 120 }}
       />
@@ -152,14 +175,20 @@ export function TutorialOverlay({ role, onComplete }) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
-          className="absolute pointer-events-auto"
-          style={{
-            top: spotlightCoords.top + spotlightCoords.height + 20 > window.innerHeight - 280
-              ? spotlightCoords.top - 260
-              : spotlightCoords.top + spotlightCoords.height + 20,
-            left: Math.min(Math.max(10, spotlightCoords.left), window.innerWidth - 330),
-            width: 'min(320px, 90vw)'
-          }}
+          className="fixed pointer-events-auto"
+          style={(() => {
+            const PAD = 12;
+            const CARD_W = Math.min(320, window.innerWidth - PAD * 2);
+            const CARD_H = 280; // estimate, enough headroom
+            const spBottom = spotlightCoords.top + spotlightCoords.height;
+            const spaceBelow = window.innerHeight - spBottom;
+            const top = spaceBelow >= CARD_H + PAD
+              ? spBottom + PAD
+              : Math.max(PAD, spotlightCoords.top - CARD_H - PAD);
+            const rawLeft = spotlightCoords.left + spotlightCoords.width / 2 - CARD_W / 2;
+            const left = Math.min(Math.max(PAD, rawLeft), window.innerWidth - CARD_W - PAD);
+            return { top, left, width: CARD_W };
+          })()}
         >
           <div className="glass-panel p-6 bg-blue-600 border-white/20 shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 right-0 p-8 bg-white/5 rounded-full -mr-10 -mt-10 blur-2xl" />
