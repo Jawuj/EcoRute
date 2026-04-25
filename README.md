@@ -11,6 +11,12 @@
 
 ---
 
+## Links
+
+[Repositorio del Proyecto](https://github.com/Jawuj/EcoRute)
+[Página Web del Proyecto](https://eco-rute.vercel.app)
+[Aplicación Android](https://github.com/Jawuj/EcoRute/releases/tag/v1.0.0-beta)
+
 ## Descripción
 
 **EcoRuta Inteligente** es una solución digital diseñada para optimizar la recolección de residuos sólidos y facilitar la interacción entre ciudadanos, recicladores, trabajadores y administradores. La plataforma permite a los usuarios reportar puntos críticos de acumulación de basura, solicitar recolecciones de material reciclable, y gestionar rutas de forma eficiente a través de mapas interactivos.
@@ -157,18 +163,13 @@ EcoRute/
 ## Próximos Pasos (Roadmap)
 
 - [ ] **Mejora del mapa de calor**: Implementar un mapa de calor más preciso y eficiente. (Prioridad Alta)
+- [ ] **Aplicación para IOS**: Crear la aplicación para dicho sistema.
 - [ ] **IA para Clasificación**: Implementación de modelos para identificar tipos de residuos mediante fotos.
 - [ ] **Sistema de Gamificación**: Puntos y recompensas para ciudadanos que reciclan activamente.
 - [ ] **Reportes en PDF**: Generación automática de informes mensuales para entidades gubernamentales.
 - [ ] **Modo Offline**: Registro de reportes sin conexión para zonas con baja cobertura.
 - [ ] **Automatización de Notificaciones**: Implementar notificaciones push para usuarios cuando sus reportes sean atendidos.
 
----
-
-## Contacto
-
-[Repositorio del Proyecto](https://github.com/Jawuj/EcoRute)
-[Página Web del Proyecto](https://eco-rute.vercel.app)
 
 ---
 
