@@ -28,6 +28,12 @@ const steps = {
       title: 'Tu Huella Ecológica',
       content: 'Aquí verás el impacto positivo que generas al gestionar tus residuos correctamente.',
       icon: Sparkles
+    },
+    {
+      target: 'step-help-btn',
+      title: '¡Listo! 🎉',
+      content: 'Ya conoces EcoRuta. Si en algún momento quieres ver el tutorial de nuevo, presiona este botón azul.',
+      icon: HelpCircle
     }
   ],
   reciclador: [
@@ -54,6 +60,12 @@ const steps = {
       title: 'Visualización',
       content: 'Cambia entre modo día/noche, usa la pantalla completa para navegar con comodidad o presiona la flecha para ubicarte en el mapa. ',
       icon: Sparkles
+    },
+    {
+      target: 'step-help-btn',
+      title: '¡Listo! 🎉',
+      content: 'Ya conoces EcoRuta. Si necesitas ver el tutorial de nuevo, presiona este botón azul en cualquier momento.',
+      icon: HelpCircle
     }
   ],
   trabajador: [
@@ -80,6 +92,12 @@ const steps = {
       title: 'Controles de Mapa',
       content: 'Cambia entre modo día/noche o usa la pantalla completa para trabajar con mayor comodidad.',
       icon: Sparkles
+    },
+    {
+      target: 'step-help-btn',
+      title: '¡Listo! 🎉',
+      content: 'Ya conoces EcoRuta. Si necesitas ver el tutorial de nuevo, presiona este botón azul en cualquier momento.',
+      icon: HelpCircle
     }
   ]
 };
@@ -254,6 +272,7 @@ export function TutorialOverlay({ role, onComplete }) {
 export function HelpButton({ onClick }) {
   return (
     <button
+      id="step-help-btn"
       onClick={onClick}
       className="fixed bottom-6 right-6 p-4 bg-blue-600 text-white rounded-2xl shadow-2xl hover:scale-110 active:scale-95 transition-all z-[9000] group"
       title="Ayuda / Tutorial"

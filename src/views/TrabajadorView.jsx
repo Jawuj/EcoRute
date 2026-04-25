@@ -17,6 +17,7 @@ export function TrabajadorView({ user, showToast }) {
   const [routeInfo, setRouteInfo] = useState(null);
   const [isMapFull, setIsMapFull] = useState(false);
   const [modalImage, setModalImage] = useState(null);
+  const [isMapDark, setIsMapDark] = useState(true);
   const mapRef = useRef(null);
 
   const [userHeading, setUserHeading] = useState(0);
@@ -242,7 +243,7 @@ export function TrabajadorView({ user, showToast }) {
       </div>
 
       {/* Mapa y Detalle */}
-      <div id="step-map-view" className={`transition-all duration-500 relative ${isMapFull ? 'fixed inset-0 z-[5000] p-0' : 'lg:col-span-2 glass-panel border-white/5 overflow-hidden'}`}>
+      <div id="step-map-view" className={`transition-all duration-500 relative ${isMapFull ? 'fixed inset-0 z-[5000] p-0' : 'lg:col-span-2 glass-panel border-white/5 overflow-hidden h-[70dvh] lg:h-auto min-h-[500px]'}`}>
         <EcoMap 
           ref={mapRef}
           points={filteredPickups} 
@@ -254,6 +255,7 @@ export function TrabajadorView({ user, showToast }) {
           routeTarget={isNavigating ? activePickup?.ubicacion : null}
           externalFullscreen={isMapFull}
           onFullscreenChange={(v) => setIsMapFull(v)}
+          onDarkModeChange={(dark) => setIsMapDark(dark)}
           onRouteFound={(info) => setRouteInfo(info)}
           onMarkerClick={(pickup) => { 
             setActivePickup(pickup); 
@@ -271,7 +273,7 @@ export function TrabajadorView({ user, showToast }) {
             <motion.div 
               initial={{ y: 100 }} 
               animate={{ y: 0 }}
-              className="absolute bottom-4 left-4 right-4 glass-panel p-4 md:p-6 bg-black/80 backdrop-blur-2xl border-orange-500/30 flex flex-col items-center justify-between gap-3 md:gap-6 z-[9999] shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden"
+              className="absolute bottom-4 left-4 right-4 p-4 md:p-6 bg-black/75 backdrop-blur-2xl border border-white/10 rounded-[2rem] flex flex-col items-center justify-between gap-3 md:gap-6 z-[9999] shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden"
             >
               <div className="flex flex-col md:flex-row items-center justify-between gap-6 w-full">
                 <div className="flex items-center gap-4 md:gap-6">
@@ -309,7 +311,7 @@ export function TrabajadorView({ user, showToast }) {
                   >
                     CANCELAR RUTA
                   </button>
-                  {activePickup.items?.length <= 1 && activePickup.estado === 'pendiente' && (
+                  {(!activePickup.items || activePickup.items.length <= 1) && activePickup.estado === 'pendiente' && (
                     (() => {
                       const dist = userLocation ? calculateDistance(userLocation, activePickup.ubicacion) : 1000;
                       const isNear = dist <= COMPLETION_THRESHOLD_METERS;

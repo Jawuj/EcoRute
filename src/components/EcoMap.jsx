@@ -278,7 +278,8 @@ export const EcoMap = forwardRef(({
   userLocation = null,
   userHeading = 0,
   externalFullscreen = undefined,
-  onFullscreenChange = null
+  onFullscreenChange = null,
+  onDarkModeChange = null
 }, ref) => {
   const containerRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -483,7 +484,7 @@ export const EcoMap = forwardRef(({
 
         {/* Botón de Modo Claro/Oscuro */}
         <button
-          onClick={() => setIsDarkMode(!isDarkMode)}
+          onClick={() => { const next = !isDarkMode; setIsDarkMode(next); if (onDarkModeChange) onDarkModeChange(next); }}
           className="p-4 bg-black/60 backdrop-blur-xl border border-white/10 text-white rounded-2xl shadow-2xl hover:scale-110 transition-all group"
           title={isDarkMode ? "Modo Claro" : "Modo Oscuro"}
         >
