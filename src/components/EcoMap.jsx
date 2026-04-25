@@ -1,235 +1,303 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { setOptions, importLibrary } from '@googlemaps/js-api-loader';
-import { GOOGLE_MAPS_API_KEY, MEDELLIN_COORDS } from '../constants';
+import React, { useEffect, useState, useRef } from 'react';
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
+import { Maximize2, Minimize2 } from 'lucide-react';
+import L from 'leaflet';
+import 'leaflet-routing-machine';
+import 'leaflet.heat';
+import { MEDELLIN_COORDS } from '../constants';
 
-const mapStyles = [
-  { "elementType": "geometry", "stylers": [{ "color": "#111827" }] },
-  { "elementType": "labels.text.fill", "stylers": [{ "color": "#6b7280" }] },
-  { "elementType": "labels.text.stroke", "stylers": [{ "color": "#111827" }] },
-  { "featureType": "administrative", "elementType": "geometry", "stylers": [{ "color": "#374151" }] },
-  { "featureType": "road", "elementType": "geometry.fill", "stylers": [{ "color": "#1f2937" }] },
-  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#000000" }] }
-];
+// Corregir íconos por defecto de Leaflet
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+});
 
-export function EcoMap({ points = [], center = MEDELLIN_COORDS, zoom = 13, onMapClick, onMarkerClick, routeTarget = null, showHeatmap = false, userRole = 'ciudadano', userLocation = null }) {
-  const mapRef = useRef(null);
-  const [map, setMap] = useState(null);
-  const [google, setGoogle] = useState(null);
-  const markersRef = useRef([]);
-  const [heatmapLayer, setHeatmapLayer] = useState(null);
-  const [directionsRenderer, setDirectionsRenderer] = useState(null);
-  const [directionsService, setDirectionsService] = useState(null);
-  const userMarkerRef = useRef(null);
+// Componente para manejar clics en el mapa
+function MapClickHandler({ onClick }) {
+  useMapEvents({
+    click: (e) => {
+      if (onClick) onClick({ lat: e.latlng.lat, lng: e.latlng.lng });
+    },
+  });
+  return null;
+}
 
-  // 1. Inicialización del Mapa
+// Componente para el mapa de calor
+function HeatmapLayer({ points }) {
+  const map = useMap();
+
   useEffect(() => {
-    if (!GOOGLE_MAPS_API_KEY) return;
+    if (!map || !points || points.length === 0) return;
 
-    setOptions({
-      apiKey: GOOGLE_MAPS_API_KEY,
-      version: 'weekly',
+    const heatData = points
+      .filter(p => p.ubicacion && p.ubicacion.lat && p.ubicacion.lng)
+      .map(p => [
+        p.ubicacion.lat, 
+        p.ubicacion.lng, 
+        p.material === 'escombros' ? 1.0 : 0.5 // Máxima intensidad para escombros
+      ]); 
+
+    const heatLayer = L.heatLayer(heatData, {
+      radius: 30,
+      blur: 20,
+      maxZoom: 17,
+      gradient: { 
+        0.2: '#10b981', // Verde (Baja)
+        0.6: '#f59e0b', // Naranja (Media)
+        1.0: '#ef4444'  // Rojo (Alta)
+      }
+    }).addTo(map);
+
+    return () => map.removeLayer(heatLayer);
+  }, [map, points]);
+
+  return null;
+}
+
+// Componente para la ruta (Routing Machine)
+function Routing({ origin, destination, userRole, onRouteFound }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map || !origin || !destination) return;
+
+    const routeColor = userRole === 'trabajador' ? '#f97316' : '#10b981';
+
+    const routingControl = L.Routing.control({
+      waypoints: [
+        L.latLng(origin.lat, origin.lng),
+        L.latLng(destination.lat, destination.lng)
+      ],
+      lineOptions: {
+        styles: [{ color: routeColor, weight: 6, opacity: 0.8 }]
+      },
+      addWaypoints: false,
+      draggableWaypoints: false,
+      fitSelectedRoutes: true,
+      show: false,
+      createMarker: () => null
+    }).addTo(map);
+
+    routingControl.on('routesfound', (e) => {
+      const routes = e.routes;
+      const summary = routes[0].summary;
+      if (onRouteFound) {
+        onRouteFound({
+          time: Math.round(summary.totalTime / 60), // en minutos
+          distance: (summary.totalDistance / 1000).toFixed(1) // en km
+        });
+      }
     });
 
-    const initMap = async () => {
-      try {
-        const { Map } = await importLibrary('maps');
-        const { AdvancedMarkerElement } = await importLibrary('marker');
-        const { DirectionsRenderer, DirectionsService } = await importLibrary('routes');
-        const { HeatmapLayer } = await importLibrary('visualization');
+    // Auto-centrar
+    map.panTo([origin.lat, origin.lng]);
 
-        setGoogle({ AdvancedMarkerElement, HeatmapLayer });
-
-        const mapInstance = new Map(mapRef.current, {
-          center,
-          zoom,
-          styles: mapStyles,
-          disableDefaultUI: true,
-          mapId: 'ECO_RUTE_MAP_ID',
-        });
-
-        if (onMapClick) {
-          mapInstance.addListener('click', (e) => {
-            onMapClick({ lat: e.latLng.lat(), lng: e.latLng.lng() });
-          });
-        }
-
-        const renderer = new DirectionsRenderer({
-          map: mapInstance,
-          suppressMarkers: true, // No queremos los marcadores por defecto de la ruta A-B
-          polylineOptions: { strokeColor: '#10b981', strokeWeight: 5 } // Ruta Verde
-        });
-
-        const heatmap = new HeatmapLayer({
-          map: null,
-          radius: 0.005, // Radio geográfico (aprox 500m)
-          dissipating: false, // El punto no crece al alejar la cámara
-          opacity: 0.7,
-          maxIntensity: 5,
-          gradient: [
-            'rgba(0, 255, 0, 0)',        // Invisible base
-            'rgba(0, 255, 0, 0.5)',      // Verde transparente
-            'rgba(173, 255, 47, 0.6)',   // Verde amarillento
-            'rgba(255, 255, 0, 0.8)',    // Amarillo
-            'rgba(255, 165, 0, 0.9)',    // Naranja
-            'rgba(255, 0, 0, 1)'         // Rojo intenso
-          ]
-        });
-
-        setHeatmapLayer(heatmap);
-        setDirectionsRenderer(renderer);
-        setDirectionsService(new DirectionsService());
-        setMap(mapInstance);
-
-        // El rastreo de ubicación se maneja en el componente padre (RecicladorView/TrabajadorView/CiudadanoView)
-      } catch (e) {
-        console.error("Google Maps Error:", e);
+    return () => {
+      if (map && routingControl) {
+        map.removeControl(routingControl);
       }
     };
+  }, [map, origin, destination]);
 
-    initMap();
-  }, []);
+  return null;
+}
 
-  const getSvgForMaterial = (material, estado) => {
-    const color = estado === 'completado' ? '#10b981' : '#f59e0b';
-    let path = '';
+// Función para generar íconos personalizados con SVG
+const createCustomIcon = (material, estado, isUser = false, userRole = '') => {
+  let color = '#f59e0b'; // Default Orange
+  let iconPath = '';
+  let size = 32;
 
+  // Color basado en tipo de material si no es el usuario
+  if (!isUser) {
     switch (material) {
-      case 'carton': // Box
-        path = '<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>';
+      case 'carton': color = '#f97316'; break; // Naranja
+      case 'vidrio': color = '#3b82f6'; break; // Azul
+      case 'plastico': color = '#eab308'; break; // Amarillo
+      case 'basura': color = '#6b7280'; break; // Gris
+      case 'escombros': color = '#ef4444'; break; // Rojo
+      default: color = '#10b981'; // Verde por defecto
+    }
+  }
+
+  if (isUser) {
+    color = userRole === 'reciclador' ? '#10b981' : userRole === 'trabajador' ? '#f97316' : '#3b82f6';
+    // Flecha tipo Navegador (Google Maps)
+    iconPath = '<path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/>';
+    size = 44;
+  } else {
+    switch (material) {
+      case 'carton':
+        iconPath = '<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>';
         break;
-      case 'vidrio': // Wine
-        path = '<path d="M8 22h8"/><path d="M7 10h10"/><path d="M12 15v7"/><path d="M12 15a5 5 0 0 0 5-5c0-2-.5-4-2-8H9c-1.5 4-2 6-2 8a5 5 0 0 0 5 5Z"/>';
+      case 'vidrio':
+        iconPath = '<path d="M8 22h8"/><path d="M7 10h10"/><path d="M12 15v7"/><path d="M12 15a5 5 0 0 0 5-5c0-2-.5-4-2-8H9c-1.5 4-2 6-2 8a5 5 0 0 0 5 5Z"/>';
         break;
-      case 'plastico': // Trash2
-        path = '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>';
+      case 'plastico':
+        iconPath = '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>';
         break;
-      case 'basura': // Trash
+      case 'escombros':
+        iconPath = '<path d="M12 2v8"/><path d="m4.93 4.93 5.66 5.66"/><path d="M2 12h8"/><path d="m4.93 19.07 5.66-5.66"/><path d="M12 22v-8"/><path d="m19.07 19.07-5.66-5.66"/><path d="M22 12h-8"/><path d="m19.07 4.93-5.66 5.66"/>';
+        break;
       default:
-        path = '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>';
+        iconPath = '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>';
         break;
     }
+  }
 
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5)); background: #111827; border-radius: 50%; padding: 4px; border: 2px solid ${color};">${path}</svg>`;
+  const svg = `<div style="display: flex; flex-direction: column; align-items: center;">
+    <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="${isUser ? color : 'none'}" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5)); ${isUser ? '' : `background: #111827; border-radius: 50%; padding: 6px; border: 3px solid ${color};`}">${iconPath}</svg>
+    ${!isUser ? `<span style="background: ${color}; color: black; font-size: 8px; font-weight: 900; padding: 1px 4px; border-radius: 4px; margin-top: 2px; text-transform: uppercase;">${material}</span>` : ''}
+  </div>`;
+  
+  return L.divIcon({
+    html: svg,
+    className: 'custom-leaflet-icon',
+    iconSize: [size, size + 15],
+    iconAnchor: [size/2, size/2 + 7],
+  });
+};
+
+// Componente para auto-centrar el mapa en el usuario
+function AutoFollow({ userLocation, active }) {
+  const map = useMap();
+  useEffect(() => {
+    if (active && userLocation) {
+      map.panTo([userLocation.lat, userLocation.lng], { animate: true });
+    }
+  }, [map, userLocation, active]);
+  return null;
+}
+
+// Componente para re-centrar el mapa cuando cambian las coordenadas base
+function Recenter({ center }) {
+  const map = useMap();
+  useEffect(() => {
+    if (center) {
+      map.setView([center.lat, center.lng]);
+    }
+  }, [center, map]);
+  return null;
+}
+
+// Componente para invalidar el tamaño al cambiar a pantalla completa
+function ResizeMap() {
+  const map = useMap();
+  useEffect(() => {
+    const handleResize = () => {
+      setTimeout(() => {
+        map.invalidateSize();
+      }, 300);
+    };
+    window.addEventListener('resize', handleResize);
+    document.addEventListener('fullscreenchange', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      document.removeEventListener('fullscreenchange', handleResize);
+    };
+  }, [map]);
+  return null;
+}
+
+export function EcoMap({ children, points = [], center = MEDELLIN_COORDS, zoom = 13, onMapClick, onMarkerClick, onRouteFound, routeTarget = null, showHeatmap = false, userRole = 'ciudadano', userLocation = null }) {
+  const containerRef = useRef(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      containerRef.current.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+      });
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
   };
 
-  // 2. Actualizar Marcadores y Mapa de Calor
   useEffect(() => {
-    if (!map || !google) return;
-
-    // Limpiar marcadores anteriores
-    markersRef.current.forEach(marker => {
-      if (marker.map) marker.map = null;
-    });
-    markersRef.current = [];
-
-    if (showHeatmap && heatmapLayer && window.google?.maps?.LatLng) {
-      // Activar mapa de calor
-      const heatData = points
-        .filter(p => p.ubicacion && p.ubicacion.lat && p.ubicacion.lng)
-        .map(p => new window.google.maps.LatLng(p.ubicacion.lat, p.ubicacion.lng));
-
-      heatmapLayer.setData(heatData);
-      heatmapLayer.setMap(map);
-    } else {
-      // Desactivar mapa de calor y mostrar marcadores
-      if (heatmapLayer) heatmapLayer.setMap(null);
-
-      // Agregar nuevos marcadores
-      points.forEach((point) => {
-        if (point.ubicacion) {
-          const svgContainer = document.createElement('div');
-          svgContainer.innerHTML = getSvgForMaterial(point.material, point.estado);
-          svgContainer.style.cursor = 'pointer';
-
-          // Hacer el marcador interactivo
-          if (onMarkerClick) {
-            svgContainer.addEventListener('click', (e) => {
-              e.stopPropagation(); // Evitar que el clic pase al mapa de fondo
-              onMarkerClick(point);
-            });
-          }
-
-          const marker = new google.AdvancedMarkerElement({
-            position: { lat: point.ubicacion.lat, lng: point.ubicacion.lng },
-            map,
-            title: point.material || 'Punto de Recogida',
-            content: svgContainer,
-          });
-          markersRef.current.push(marker);
-        }
-      });
-    }
-  }, [points, map, google, onMarkerClick, showHeatmap, heatmapLayer]);
-
-    // 3. Dibujar marcador del usuario y trazar ruta
-    useEffect(() => {
-      if (!map || !google || !userLocation) return;
-
-      if (userRole === 'admin') {
-        if (userMarkerRef.current) {
-          userMarkerRef.current.map = null;
-          userMarkerRef.current = null;
-        }
-        return;
-      }
-
-      // Crear marcador del camión/usuario si no existe
-      if (!userMarkerRef.current) {
-        let iconColor = '#3b82f6'; // Ciudadano: Azul
-        let iconPath = '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'; 
-        
-        if (userRole === 'reciclador') {
-          iconColor = '#10b981'; // Reciclador: Verde
-        } else if (userRole === 'trabajador') {
-          iconColor = '#f97316'; // Trabajador: Naranja
-          iconPath = '<path d="M10 17h4V5H2v12h3"/><path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5"/><path d="M14 17h1"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/>';
-        }
-
-        const svgHtml = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5)); background: #111827; border-radius: 50%; padding: 6px; border: 3px solid ${iconColor};">${iconPath}</svg>`;
-        const container = document.createElement('div');
-        container.innerHTML = svgHtml;
-
-        userMarkerRef.current = new google.AdvancedMarkerElement({
-          position: userLocation,
-          map,
-          title: 'Tu Ubicación',
-          content: container,
-        });
-      } else {
-        userMarkerRef.current.position = userLocation;
-      }
-
-      // Calcular ruta si hay un objetivo
-      if (routeTarget && directionsRenderer && directionsService) {
-        directionsService.route({
-          origin: userLocation,
-          destination: routeTarget,
-          travelMode: window.google.maps.TravelMode.DRIVING,
-        }, (response, status) => {
-          if (status === 'OK') {
-            directionsRenderer.setDirections(response);
-            map.panTo(userLocation);
-            if (map.getZoom() < 16) map.setZoom(17);
-          } else {
-            console.error("Fallo al generar ruta:", status);
-          }
-        });
-      } else if (directionsRenderer) {
-        directionsRenderer.setDirections({ routes: [] });
-      }
-
-    }, [userLocation, routeTarget, map, google, directionsRenderer, directionsService, userRole]);
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
 
   return (
-    <div className="w-full h-full relative overflow-hidden rounded-[2rem]">
-      <div ref={mapRef} className="w-full h-full" />
-      {(!GOOGLE_MAPS_API_KEY || GOOGLE_MAPS_API_KEY === 'YOUR_API_KEY_HERE') && (
-        <div className="absolute inset-0 bg-black/90 flex items-center justify-center text-center p-6">
-          <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">
-            Configura GOOGLE_MAPS_API_KEY para activar el mapa
-          </p>
-        </div>
-      )}
+    <div ref={containerRef} className={`w-full h-full relative overflow-hidden bg-[#111827] ${isFullscreen ? '' : 'rounded-[2rem]'}`}>
+      <MapContainer 
+        center={[center.lat, center.lng]} 
+        zoom={zoom} 
+        scrollWheelZoom={true}
+        className="w-full h-full"
+        zoomControl={false}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        />
+
+        <Recenter center={center} />
+        <ResizeMap />
+        <MapClickHandler onClick={onMapClick} />
+        
+        {/* Auto-seguir al usuario en navegación */}
+        <AutoFollow userLocation={userLocation} active={!!routeTarget} />
+
+        {/* Mapa de Calor */}
+        {showHeatmap && <HeatmapLayer points={points} />}
+
+        {/* Marcadores de puntos críticos */}
+        {!showHeatmap && points.map((point, idx) => (
+          point.ubicacion && (
+            <Marker 
+              key={idx} 
+              position={[point.ubicacion.lat, point.ubicacion.lng]}
+              icon={createCustomIcon(point.material, point.estado)}
+              zIndexOffset={1000}
+              eventHandlers={{
+                click: (e) => {
+                  L.DomEvent.stopPropagation(e);
+                  if (onMarkerClick) onMarkerClick(point);
+                },
+              }}
+            />
+          )
+        ))}
+
+        {/* Marcador del Usuario */}
+        {userLocation && userRole !== 'admin' && (
+          <Marker 
+            position={[userLocation.lat, userLocation.lng]}
+            icon={createCustomIcon(null, null, true, userRole)}
+          />
+        )}
+
+        {/* Ruta en tiempo real (Modo Uber) */}
+        {routeTarget && userLocation && (
+          <Routing 
+            origin={userLocation} 
+            destination={routeTarget} 
+            userRole={userRole} 
+            onRouteFound={onRouteFound}
+          />
+        )}
+      </MapContainer>
+
+      {/* Renderizar contenido adicional (paneles de info) dentro del contenedor fullscreen */}
+      {children}
+
+      {/* Botón de Pantalla Completa (Real API) */}
+      <button 
+        onClick={toggleFullscreen}
+        className="absolute top-24 right-4 p-4 bg-black/60 backdrop-blur-xl border border-white/10 text-white rounded-2xl shadow-2xl hover:scale-110 transition-all z-[9999] group"
+        title="Pantalla Completa"
+      >
+        {isFullscreen ? <Minimize2 size={24} /> : <Maximize2 size={24} />}
+        <span className="absolute right-full mr-4 top-1/2 -translate-y-1/2 px-3 py-1 bg-black text-[10px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+          {isFullscreen ? 'Salir Fullscreen' : 'Pantalla Completa'}
+        </span>
+      </button>
     </div>
   );
 }

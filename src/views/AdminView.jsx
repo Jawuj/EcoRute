@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { BarChart3, TrendingUp, Leaf, Building2, Map as MapIcon, Users, ArrowUpRight, Trash2 } from 'lucide-react';
 import { EcoMap } from '../components/EcoMap';
 import { supabase } from '../supabase';
+import { ImageModal } from '../components/ImageModal';
 
 export function AdminView({ user, showToast }) {
   const [reports, setReports] = useState([]);
@@ -12,6 +13,7 @@ export function AdminView({ user, showToast }) {
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [selectedReports, setSelectedReports] = useState([]);
   const [viewMode, setViewMode] = useState('stats'); // 'stats' | 'users' | 'reports'
+  const [modalImage, setModalImage] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -106,12 +108,12 @@ export function AdminView({ user, showToast }) {
 
   return (
     <div className="space-y-8">
-      <header className="flex justify-between items-end">
-        <div className="space-y-1">
-          <h2 className="text-4xl font-black tracking-tight">Panel Estratégico</h2>
-          <p className="text-gray-400 font-medium">Métricas de impacto y monitoreo en tiempo real.</p>
+      <header className="flex flex-col md:flex-row justify-between items-center md:items-end gap-6">
+        <div className="space-y-1 text-center md:text-left w-full">
+          <h2 className="text-3xl md:text-4xl font-black tracking-tight">Panel Estratégico</h2>
+          <p className="text-gray-400 font-medium text-sm md:text-base">Métricas de impacto y monitoreo en tiempo real.</p>
         </div>
-        <div className="flex bg-black/40 p-1.5 rounded-2xl border border-white/5 backdrop-blur-xl">
+        <div className="flex bg-black/40 p-1 md:p-1.5 rounded-2xl border border-white/5 backdrop-blur-xl w-full md:w-auto overflow-x-auto md:overflow-visible no-scrollbar">
           {[
             { id: 'stats', label: 'Dashboard', icon: TrendingUp },
             { id: 'users', label: 'Usuarios', icon: Users },
@@ -120,7 +122,7 @@ export function AdminView({ user, showToast }) {
             <button 
               key={tab.id}
               onClick={() => setViewMode(tab.id)}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${viewMode === tab.id ? 'bg-white text-black shadow-xl shadow-white/10' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
+              className={`flex items-center justify-center gap-2 px-4 md:px-8 py-2.5 rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest transition-all duration-300 flex-1 md:flex-none whitespace-nowrap ${viewMode === tab.id ? 'bg-white text-black shadow-xl shadow-white/10' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
             >
               <tab.icon size={14} />
               {tab.label}
@@ -182,25 +184,25 @@ export function AdminView({ user, showToast }) {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 glass-panel p-10 space-y-8">
-              <div className="flex justify-between items-center">
-                <h3 className="text-2xl font-black tracking-tight flex items-center gap-3">
+            <div className="lg:col-span-2 glass-panel p-6 md:p-10 space-y-6 md:space-y-8">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <h3 className="text-xl md:text-2xl font-black tracking-tight flex items-center gap-3">
                   <MapIcon className="text-yellow-500" size={24} />
-                  Monitor Geoespacial: Medellín
+                  Monitor Geoespacial
                 </h3>
-                <div className="flex gap-3">
+                <div className="flex flex-wrap gap-2">
                   <button 
                     onClick={() => setShowHeatmap(!showHeatmap)}
-                    className={`px-4 py-1 text-[10px] font-black uppercase rounded-lg border transition-all ${showHeatmap ? 'bg-orange-500/20 text-orange-400 border-orange-500/50 shadow-lg shadow-orange-500/20' : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10'}`}
+                    className={`px-3 py-1.5 text-[8px] md:text-[10px] font-black uppercase rounded-lg border transition-all ${showHeatmap ? 'bg-orange-500/20 text-orange-400 border-orange-500/50 shadow-lg shadow-orange-500/20' : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10'}`}
                   >
-                    {showHeatmap ? 'Ocultar Calor' : 'Ver Mapa de Calor'}
+                    {showHeatmap ? 'Ocultar Calor' : 'Mapa de Calor'}
                   </button>
-                  <span className="px-3 py-1 bg-red-500/20 text-red-400 text-[10px] font-black uppercase rounded-lg border border-red-500/30">{reports.filter(r => r.estado === 'pendiente').length} Pendientes</span>
-                  <span className="px-3 py-1 bg-green-500/20 text-green-400 text-[10px] font-black uppercase rounded-lg border border-green-500/30">{reports.filter(r => r.estado === 'completado').length} Atendidos</span>
+                  <span className="px-2 py-1 bg-red-500/20 text-red-400 text-[8px] md:text-[10px] font-black uppercase rounded-lg border border-red-500/30 whitespace-nowrap">{reports.filter(r => r.estado === 'pendiente').length} Pendientes</span>
+                  <span className="px-2 py-1 bg-green-500/20 text-green-400 text-[8px] md:text-[10px] font-black uppercase rounded-lg border border-green-500/30 whitespace-nowrap">{reports.filter(r => r.estado === 'completado').length} Atendidos</span>
                 </div>
               </div>
               
-              <div className="aspect-video bg-black/40 border border-white/5 rounded-[2rem] relative overflow-hidden">
+              <div className="h-[400px] md:aspect-video bg-black/40 border border-white/5 rounded-3xl md:rounded-[2rem] relative overflow-hidden">
                 <EcoMap points={reports} showHeatmap={showHeatmap} userRole="admin" />
               </div>
             </div>
@@ -217,51 +219,53 @@ export function AdminView({ user, showToast }) {
       )}
 
       {viewMode === 'users' && (
-        <div className="glass-panel p-8 space-y-6">
-          <div className="flex justify-between items-center">
-            <h3 className="text-2xl font-black uppercase tracking-tight">Gestión de Usuarios</h3>
+        <div className="glass-panel p-4 md:p-8 space-y-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <h3 className="text-xl md:text-2xl font-black uppercase tracking-tight">Gestión de Usuarios</h3>
             {selectedUsers.length > 0 && (
               <button 
                 onClick={handleDeleteUsers}
-                className="px-6 py-2 bg-red-500 text-white text-[10px] font-black uppercase rounded-xl hover:bg-red-600 transition-all shadow-lg shadow-red-500/20"
+                className="w-full md:w-auto px-6 py-2 bg-red-500 text-white text-[10px] font-black uppercase rounded-xl hover:bg-red-600 transition-all shadow-lg shadow-red-500/20"
               >
                 Borrar Seleccionados ({selectedUsers.length})
               </button>
             )}
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-white/5">
-                  <th className="p-4"><input type="checkbox" onChange={(e) => setSelectedUsers(e.target.checked ? allUsers.map(u => u.id) : [])} /></th>
-                  <th className="p-4 text-[10px] font-black uppercase text-gray-500 tracking-widest">Nombre</th>
-                  <th className="p-4 text-[10px] font-black uppercase text-gray-500 tracking-widest">Rol</th>
-                  <th className="p-4 text-[10px] font-black uppercase text-gray-500 tracking-widest">Fecha Registro</th>
-                  <th className="p-4 text-[10px] font-black uppercase text-gray-500 tracking-widest text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {allUsers.map(user => (
-                  <tr key={user.id} className="hover:bg-white/5 transition-colors">
-                    <td className="p-4"><input type="checkbox" checked={selectedUsers.includes(user.id)} onChange={(e) => setSelectedUsers(prev => e.target.checked ? [...prev, user.id] : prev.filter(id => id !== user.id))} /></td>
-                    <td className="p-4 font-bold">{user.nombre}</td>
-                    <td className="p-4"><span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase border ${user.rol === 'admin' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' : 'bg-blue-500/10 text-blue-500 border-blue-500/20'}`}>{user.rol}</span></td>
-                    <td className="p-4 text-[10px] text-gray-600 font-bold">{user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}</td>
-                    <td className="p-4 text-right">
-                      {user.rol !== 'admin' && (
-                        <button 
-                          onClick={() => handleDeleteSingleUser(user.id)}
-                          className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-colors border border-red-500/20"
-                          title="Borrar Usuario"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
-                    </td>
+          <div className="overflow-x-auto -mx-4 md:mx-0">
+            <div className="inline-block min-w-full align-middle">
+              <table className="min-w-full text-left">
+                <thead>
+                  <tr className="border-b border-white/5">
+                    <th className="p-4"><input type="checkbox" onChange={(e) => setSelectedUsers(e.target.checked ? allUsers.map(u => u.id) : [])} /></th>
+                    <th className="p-4 text-[9px] md:text-[10px] font-black uppercase text-gray-500 tracking-widest whitespace-nowrap">Nombre</th>
+                    <th className="p-4 text-[9px] md:text-[10px] font-black uppercase text-gray-500 tracking-widest whitespace-nowrap">Rol</th>
+                    <th className="p-4 text-[9px] md:text-[10px] font-black uppercase text-gray-500 tracking-widest whitespace-nowrap">Fecha Registro</th>
+                    <th className="p-4 text-[9px] md:text-[10px] font-black uppercase text-gray-500 tracking-widest text-right whitespace-nowrap">Acciones</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {allUsers.map(user => (
+                    <tr key={user.id} className="hover:bg-white/5 transition-colors">
+                      <td className="p-4"><input type="checkbox" checked={selectedUsers.includes(user.id)} onChange={(e) => setSelectedUsers(prev => e.target.checked ? [...prev, user.id] : prev.filter(id => id !== user.id))} /></td>
+                      <td className="p-4 font-bold text-sm md:text-base whitespace-nowrap">{user.nombre}</td>
+                      <td className="p-4"><span className={`px-2 py-1 rounded-lg text-[7px] md:text-[8px] font-black uppercase border ${user.rol === 'admin' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' : 'bg-blue-500/10 text-blue-500 border-blue-500/20'}`}>{user.rol}</span></td>
+                      <td className="p-4 text-[9px] md:text-[10px] text-gray-600 font-bold whitespace-nowrap">{user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}</td>
+                      <td className="p-4 text-right whitespace-nowrap">
+                        {user.rol !== 'admin' && (
+                          <button 
+                            onClick={() => handleDeleteSingleUser(user.id)}
+                            className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-colors border border-red-500/20"
+                            title="Borrar Usuario"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -299,7 +303,14 @@ export function AdminView({ user, showToast }) {
                     <td className="p-4"><span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase border ${report.estado === 'pendiente' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' : 'bg-green-500/10 text-green-500 border-green-500/20'}`}>{report.estado}</span></td>
                     <td className="p-4 text-xs text-gray-500">{new Date(report.created_at).toLocaleString()}</td>
                     <td className="p-4">
-                      {report.imagen_url && <img src={report.imagen_url} className="w-10 h-10 rounded-lg object-cover" alt="Reporte" />}
+                      {report.imagen_url && (
+                        <img 
+                          src={report.imagen_url} 
+                          className="w-10 h-10 rounded-lg object-cover cursor-zoom-in hover:scale-110 transition-transform" 
+                          alt="Reporte" 
+                          onClick={() => setModalImage(report.imagen_url)}
+                        />
+                      )}
                     </td>
                     <td className="p-4 text-right">
                       <button 
@@ -317,6 +328,12 @@ export function AdminView({ user, showToast }) {
           </div>
         </div>
       )}
+
+      <ImageModal 
+        isOpen={!!modalImage} 
+        imageUrl={modalImage} 
+        onClose={() => setModalImage(null)} 
+      />
     </div>
   );
 }

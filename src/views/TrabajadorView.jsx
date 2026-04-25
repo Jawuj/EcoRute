@@ -5,6 +5,7 @@ import { supabase } from '../supabase';
 import { EcoMap } from '../components/EcoMap';
 import { MEDELLIN_COORDS } from '../constants';
 import { calculateDistance, COMPLETION_THRESHOLD_METERS } from '../utils';
+import { ImageModal } from '../components/ImageModal';
 
 export function TrabajadorView({ user, showToast }) {
   const [pickups, setPickups] = useState([]);
@@ -13,6 +14,9 @@ export function TrabajadorView({ user, showToast }) {
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [routeInfo, setRouteInfo] = useState(null);
+  const [isMapFull, setIsMapFull] = useState(false);
+  const [modalImage, setModalImage] = useState(null);
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -30,7 +34,7 @@ export function TrabajadorView({ user, showToast }) {
       const { data, error } = await supabase
         .from('reportes')
         .select('*')
-        .eq('material', 'basura')
+        .in('material', ['basura', 'escombros'])
         .order('created_at', { ascending: false });
       
       if (!error) setPickups(data);
@@ -83,9 +87,9 @@ export function TrabajadorView({ user, showToast }) {
   const filteredPickups = pickups.filter(p => showCompleted || p.estado === 'pendiente');
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-10rem)]">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-10rem)] relative">
       {/* Lista de Tareas */}
-      <div className="lg:col-span-1 flex flex-col gap-4 overflow-hidden">
+      <div className={`lg:col-span-1 flex flex-col gap-4 overflow-hidden ${isMapFull ? 'hidden lg:flex' : ''}`}>
         <header className="flex justify-between items-end px-2">
           <div className="space-y-0.5">
             <h2 className="text-2xl font-black tracking-tighter text-white uppercase">Agenda</h2>
@@ -121,13 +125,18 @@ export function TrabajadorView({ user, showToast }) {
               layout
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
-              onClick={() => { setActivePickup(pickup); setIsNavigating(false); }}
+              onClick={() => { setActivePickup(pickup); setIsNavigating(true); }}
               className={`glass-panel p-4 cursor-pointer border-2 transition-all relative overflow-hidden group ${activePickup?.id === pickup.id ? 'border-orange-500 bg-orange-500/10' : 'border-white/5 hover:border-white/10 hover:bg-white/5'}`}
             >
               <div className="flex gap-4 relative z-10">
                 <div className="w-20 h-20 rounded-2xl overflow-hidden bg-black/40 flex-shrink-0 border border-white/5 group-hover:border-white/10 transition-colors">
                   {pickup.imagen_url ? (
-                    <img src={pickup.imagen_url} alt="Evidencia" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <img 
+                      src={pickup.imagen_url} 
+                      alt="Evidencia" 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 cursor-zoom-in" 
+                      onClick={(e) => { e.stopPropagation(); setModalImage(pickup.imagen_url); }}
+                    />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-700 bg-gradient-to-br from-white/5 to-transparent">
                       <ShieldCheck size={32} />
@@ -167,8 +176,11 @@ export function TrabajadorView({ user, showToast }) {
                         <CheckCircle size={8} /> RESUELTO
                       </div>
                     )}
-                    <button className="btn-eco btn-outline px-4 py-2">
-                      DETALLES
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setActivePickup(pickup); }}
+                      className="btn-eco btn-outline px-4 py-2"
+                    >
+                      VER MAPA
                     </button>
                   </div>
                 </div>
@@ -182,7 +194,7 @@ export function TrabajadorView({ user, showToast }) {
       </div>
 
       {/* Mapa y Detalle */}
-      <div className="lg:col-span-2 glass-panel p-0 overflow-hidden relative border-white/5">
+      <div className={`transition-all duration-500 relative ${isMapFull ? 'fixed inset-0 z-[5000] p-0' : 'lg:col-span-2 glass-panel border-white/5 overflow-hidden'}`}>
         <EcoMap 
           points={pickups} 
           center={activePickup?.ubicacion || userLocation || MEDELLIN_COORDS} 
@@ -190,43 +202,67 @@ export function TrabajadorView({ user, showToast }) {
           userLocation={userLocation}
           showHeatmap={showHeatmap}
           routeTarget={isNavigating ? activePickup?.ubicacion : null}
-          onMarkerClick={(pickup) => { setActivePickup(pickup); setIsNavigating(false); }}
-        />
-        
-        {activePickup && (
-          <motion.div 
-            initial={{ y: 100 }} 
-            animate={{ y: 0 }}
-            className="absolute bottom-6 left-6 right-6 glass-panel p-6 bg-black/60 backdrop-blur-xl border-orange-500/30 flex items-center justify-between"
-          >
-            <div className="flex items-center gap-6">
-              {activePickup.imagen_url && (
-                <img src={activePickup.imagen_url} className="w-24 h-24 rounded-2xl object-cover border-2 border-white/10" alt="Evidencia" />
+          onRouteFound={(info) => setRouteInfo(info)}
+          onMarkerClick={(pickup) => { setActivePickup(pickup); setIsNavigating(true); setRouteInfo(null); }}
+        >
+          {activePickup && (
+            <motion.div 
+              initial={{ y: 100 }} 
+              animate={{ y: 0 }}
+              className="absolute bottom-4 left-4 right-4 glass-panel p-4 md:p-6 bg-black/60 backdrop-blur-xl border-orange-500/30 flex flex-col md:flex-row items-center justify-between gap-3 md:gap-6 z-[9999]"
+            >
+              <div className="flex items-center gap-4 md:gap-6">
+                {activePickup.imagen_url && (
+                  <img 
+                    src={activePickup.imagen_url} 
+                    className="w-16 h-16 md:w-24 md:h-24 rounded-2xl object-cover border-2 border-white/10 cursor-zoom-in hover:scale-105 transition-transform" 
+                    alt="Evidencia" 
+                    onClick={() => setModalImage(activePickup.imagen_url)}
+                  />
+                )}
+                <div>
+                  <p className="text-[8px] md:text-[10px] font-black text-orange-500 uppercase tracking-widest text-center md:text-left">Atención Requerida</p>
+                  <h3 className="text-base md:text-xl font-black uppercase text-center md:text-left">Material: {activePickup.material}</h3>
+                  {isNavigating && routeInfo && (
+                    <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest mt-1 text-center md:text-left">
+                      {routeInfo.time} min ({routeInfo.distance} km)
+                    </p>
+                  )}
+                  <p className="text-[10px] text-gray-400 font-medium italic text-center md:text-left">Estado: {activePickup.estado}</p>
+                </div>
+              </div>
+              {activePickup.estado === 'pendiente' && (
+                <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                  <button 
+                    onClick={() => { setIsNavigating(false); setRouteInfo(null); }}
+                    className="px-6 py-3 md:px-8 md:py-4 bg-red-500/10 text-red-500 text-xs md:text-sm font-black rounded-2xl border border-red-500/20 hover:bg-red-500 hover:text-white transition-all shadow-xl"
+                  >
+                    CANCELAR RUTA
+                  </button>
+                  {(() => {
+                    const dist = userLocation ? calculateDistance(userLocation, activePickup.ubicacion) : 1000;
+                    const isNear = dist <= COMPLETION_THRESHOLD_METERS;
+                    
+                    return (
+                      <button 
+                        onClick={() => updateStatus(activePickup, 'completado')}
+                        className={`px-6 py-3 md:px-8 md:py-4 font-black rounded-2xl shadow-xl transition-all ${isNear ? 'bg-orange-500 text-black shadow-orange-500/20 hover:scale-105' : 'bg-gray-600 text-gray-400 cursor-not-allowed'}`}
+                        disabled={!isNear}
+                      >
+                        {isNear ? 'RECOLECTAR' : `MUY LEJOS (${Math.round(dist)}m)`}
+                      </button>
+                    );
+                  })()}
+                </div>
               )}
-              <div>
-                <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest">Atención Requerida</p>
-                <h3 className="text-xl font-black">Material: {activePickup.material}</h3>
-                <p className="text-sm text-gray-400 font-medium">Estado: {activePickup.estado}</p>
-              </div>
-            </div>
-            {activePickup.estado === 'pendiente' && (
-              <div className="flex gap-4">
-                <button 
-                  onClick={() => setIsNavigating(!isNavigating)}
-                  className={`px-8 py-4 font-black rounded-2xl shadow-xl transition-all ${isNavigating ? 'bg-red-500/20 text-red-500 border-2 border-red-500/50 hover:bg-red-500/30' : 'bg-blue-600 text-white shadow-blue-600/20 hover:scale-105'}`}
-                >
-                  {isNavigating ? 'CANCELAR RUTA' : 'IR AL PUNTO'}
-                </button>
-                <button 
-                  onClick={() => updateStatus(activePickup, 'completado')}
-                  className="px-8 py-4 bg-orange-500 text-black font-black rounded-2xl shadow-xl shadow-orange-500/20 hover:scale-105 transition-all"
-                >
-                  MARCAR RESUELTO
-                </button>
-              </div>
-            )}
-          </motion.div>
-        )}
+            </motion.div>
+          )}
+          <ImageModal 
+            isOpen={!!modalImage} 
+            imageUrl={modalImage} 
+            onClose={() => setModalImage(null)} 
+          />
+        </EcoMap>
       </div>
     </div>
   );

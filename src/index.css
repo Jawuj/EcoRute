@@ -1,5 +1,7 @@
 @import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
+@import "leaflet/dist/leaflet.css";
+@import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
 
 :root {
   --bg-ciudadano: #020617;
@@ -19,6 +21,15 @@ body {
 
 #root {
   zoom: 0.95;
+}
+
+@media (max-width: 768px) {
+  #root {
+    zoom: 1;
+  }
+  body {
+    font-size: 16px; /* Letra más legible en móvil */
+  }
 }
 
 .role-bg-transition {
@@ -76,4 +87,57 @@ input:not([type="checkbox"]) {
 
 #map {
   mask-image: linear-gradient(to bottom, black 80%, transparent);
-}
+}
+
+/* Fix para Leaflet en móviles */
+.leaflet-container {
+  z-index: 1 !important;
+}
+
+/* Ajustes de espaciado responsivo */
+@media (max-width: 768px) {
+  .glass-panel {
+    border-radius: 1.5rem;
+    padding: 1.5rem !important;
+  }
+  
+  main {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  
+  nav {
+    padding: 1rem !important;
+  }
+  
+  .h-\[calc\(100vh-10rem\)\] {
+    height: auto !important;
+    min-height: calc(100vh - 8rem);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem !important;
+  }
+
+  /* El mapa va primero en móvil y ocupa espacio fijo */
+  .lg\:col-span-2 {
+    height: 50vh !important;
+    min-height: 350px;
+    order: -1; 
+  }
+
+  /* La lista de rutas se ajusta debajo */
+  .lg\:col-span-1 {
+    max-height: 40vh;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+}
+
+/* Ocultar scrollbars manteniendo funcionalidad */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
