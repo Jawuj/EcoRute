@@ -128,21 +128,21 @@ export default function App() {
         >
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-green-500 to-orange-500"></div>
           
-          <div className="flex justify-between items-center mb-10">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-10">
             <div className="flex items-center gap-3">
-              <Logo className="w-16 h-16" />
-              <h1 className="text-4xl font-black tracking-tighter">ECO RUTA</h1>
+              <Logo className="w-14 h-14 sm:w-16 sm:h-16" />
+              <h1 className="text-3xl sm:text-4xl font-black tracking-tighter">ECO RUTA</h1>
             </div>
-            <div className="flex gap-1 p-1 bg-white/5 rounded-2xl border border-white/10 w-fit max-w-full">
+            <div className="flex gap-1 p-1 bg-white/5 rounded-2xl border border-white/10 w-full sm:w-fit">
               <button 
                 onClick={() => setIsRegistering(false)}
-                className={`px-3 sm:px-4 py-2 rounded-xl text-[9px] sm:text-[10px] font-black tracking-widest transition-all whitespace-nowrap ${!isRegistering ? 'bg-white text-black shadow-lg' : 'text-gray-500 hover:text-white'}`}
+                className={`flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-[10px] font-black tracking-widest transition-all ${!isRegistering ? 'bg-white text-black shadow-lg' : 'text-gray-500 hover:text-white'}`}
               >
                 ENTRAR
               </button>
               <button 
                 onClick={() => setIsRegistering(true)}
-                className={`px-3 sm:px-4 py-2 rounded-xl text-[9px] sm:text-[10px] font-black tracking-widest transition-all whitespace-nowrap ${isRegistering ? 'bg-white text-black shadow-lg' : 'text-gray-500 hover:text-white'}`}
+                className={`flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-[10px] font-black tracking-widest transition-all ${isRegistering ? 'bg-white text-black shadow-lg' : 'text-gray-500 hover:text-white'}`}
               >
                 REGISTRAR
               </button>

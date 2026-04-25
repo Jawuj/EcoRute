@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, X, Sparkles, HelpCircle } from 'lucide-react';
 
@@ -151,7 +152,7 @@ export function TutorialOverlay({ role, onComplete }) {
 
   const currentStepData = currentRoleSteps[currentStep];
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[10000] overflow-hidden pointer-events-none">
       {/* Spotlight redondeado con box-shadow */}
       <motion.div
@@ -245,7 +246,8 @@ export function TutorialOverlay({ role, onComplete }) {
       </AnimatePresence>
 
       {/* Botón de Ayuda persistente (opcional, para App.jsx) */}
-    </div>
+    </div>,
+    document.body
   );
 }
 
