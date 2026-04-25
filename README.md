@@ -13,9 +13,9 @@
 
 ## Links
 
-[Repositorio del Proyecto](https://github.com/Jawuj/EcoRute)
-[Página Web del Proyecto](https://eco-rute.vercel.app)
-[Aplicación Android](https://github.com/Jawuj/EcoRute/releases/tag/v1.0.0-beta)
+- [Repositorio del Proyecto](https://github.com/Jawuj/EcoRute)
+- [Página Web del Proyecto](https://eco-rute.vercel.app)
+- [Aplicación Android](https://github.com/Jawuj/EcoRute/releases/tag/v1.0.0-beta)
 
 ## Descripción
 
