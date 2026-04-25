@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Camera as CameraIcon, MapPin, Send, Trash2, Box, Wine, CheckCircle, Trash, AlertTriangle, Biohazard, Image as ImageIcon } from 'lucide-react';
+import { Camera as CameraIcon, MapPin, Send, Trash2, Box, Wine, CheckCircle, Trash, AlertTriangle, Biohazard, Image as ImageIcon, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabase';
 import { EcoMap } from '../components/EcoMap';
@@ -14,6 +14,7 @@ export function CiudadanoView({ user, showToast }) {
   const [imageFile, setImageFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [showPhotoMenu, setShowPhotoMenu] = useState(false);
 
   // Cargar cooldown inicial desde localStorage
   React.useEffect(() => {
@@ -77,13 +78,14 @@ export function CiudadanoView({ user, showToast }) {
     { id: 'biologico', name: 'Biológico', icon: Biohazard, color: 'from-emerald-400 to-emerald-600 shadow-emerald-500/20' },
   ];
 
-  const takePhoto = async () => {
+  const handlePhotoSelection = async (sourceType) => {
+    setShowPhotoMenu(false);
     try {
       const image = await CapCamera.getPhoto({
         quality: 90,
         allowEditing: false,
         resultType: CameraResultType.Base64,
-        source: CameraSource.Prompt // Esto muestra el menú "Cámara o Galería" nativo
+        source: sourceType === 'camera' ? CameraSource.Camera : CameraSource.Photos
       });
 
       if (image) {
@@ -236,7 +238,7 @@ export function CiudadanoView({ user, showToast }) {
               <label className="block text-xs font-black uppercase tracking-[0.2em] text-white/80">2. Evidencia (Obligatoria)</label>
               <button 
                 type="button"
-                onClick={takePhoto}
+                onClick={() => setShowPhotoMenu(true)}
                 className="group relative p-6 border-2 border-dashed border-white/5 rounded-3xl flex items-center gap-4 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all cursor-pointer overflow-hidden w-full"
               >
                 <div className="p-3 bg-white/5 rounded-xl group-hover:scale-110 transition-transform">
@@ -330,6 +332,58 @@ export function CiudadanoView({ user, showToast }) {
           <p className="text-sm text-gray-400 leading-relaxed font-medium">Cada reporte gestionado evita que hasta 2 kg de residuos lleguen al relleno sanitario **La Pradera**.</p>
         </div>
       </div>
+
+      <AnimatePresence>
+        {showPhotoMenu && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="w-full max-w-sm glass-panel bg-[#2a1f18] border-white/10 p-6 shadow-2xl relative overflow-hidden"
+            >
+              <button 
+                onClick={() => setShowPhotoMenu(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+              >
+                <X size={20} />
+              </button>
+              
+              <h3 className="text-xl font-black text-white text-center mb-6 uppercase tracking-widest">Añadir Foto</h3>
+              
+              <div className="flex flex-col gap-3">
+                {/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) && (
+                  <button 
+                    onClick={() => handlePhotoSelection('camera')}
+                    className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all group"
+                  >
+                    <div className="p-3 bg-blue-500/20 group-hover:bg-blue-500 rounded-xl transition-colors">
+                      <CameraIcon size={24} className="text-blue-400 group-hover:text-white" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-black text-white uppercase text-sm tracking-widest">Tomar Foto</p>
+                      <p className="text-[10px] text-gray-400 font-medium mt-1">Usar la cámara del dispositivo</p>
+                    </div>
+                  </button>
+                )}
+                
+                <button 
+                  onClick={() => handlePhotoSelection('photos')}
+                  className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all group"
+                >
+                  <div className="p-3 bg-green-500/20 group-hover:bg-green-500 rounded-xl transition-colors">
+                    <ImageIcon size={24} className="text-green-400 group-hover:text-white" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-black text-white uppercase text-sm tracking-widest">Subir de Galería</p>
+                    <p className="text-[10px] text-gray-400 font-medium mt-1">Elegir un archivo existente</p>
+                  </div>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
