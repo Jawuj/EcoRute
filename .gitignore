@@ -26,3 +26,7 @@ coverage
 *.sln
 *.sw?
 
+.env
+.env.local
+.env.*.local
+

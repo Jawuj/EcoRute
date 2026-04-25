@@ -187,6 +187,7 @@ export function TrabajadorView({ user, showToast }) {
           points={pickups} 
           center={activePickup?.ubicacion || userLocation || MEDELLIN_COORDS} 
           zoom={14} 
+          userLocation={userLocation}
           showHeatmap={showHeatmap}
           routeTarget={isNavigating ? activePickup?.ubicacion : null}
           onMarkerClick={(pickup) => { setActivePickup(pickup); setIsNavigating(false); }}

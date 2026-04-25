@@ -11,14 +11,14 @@ const mapStyles = [
   { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#000000" }] }
 ];
 
-export function EcoMap({ points = [], center = MEDELLIN_COORDS, zoom = 13, onMapClick, onMarkerClick, routeTarget = null, showHeatmap = false, userRole = 'ciudadano' }) {
+export function EcoMap({ points = [], center = MEDELLIN_COORDS, zoom = 13, onMapClick, onMarkerClick, routeTarget = null, showHeatmap = false, userRole = 'ciudadano', userLocation = null }) {
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
   const [google, setGoogle] = useState(null);
   const markersRef = useRef([]);
-  const [directionsRenderer, setDirectionsRenderer] = useState(null);
   const [heatmapLayer, setHeatmapLayer] = useState(null);
-  const [currentLocation, setCurrentLocation] = useState(center);
+  const [directionsRenderer, setDirectionsRenderer] = useState(null);
+  const [directionsService, setDirectionsService] = useState(null);
   const userMarkerRef = useRef(null);
 
   // 1. Inicialización del Mapa
@@ -34,7 +34,7 @@ export function EcoMap({ points = [], center = MEDELLIN_COORDS, zoom = 13, onMap
       try {
         const { Map } = await importLibrary('maps');
         const { AdvancedMarkerElement } = await importLibrary('marker');
-        const { DirectionsRenderer } = await importLibrary('routes');
+        const { DirectionsRenderer, DirectionsService } = await importLibrary('routes');
         const { HeatmapLayer } = await importLibrary('visualization');
 
         setGoogle({ AdvancedMarkerElement, HeatmapLayer });
@@ -77,18 +77,10 @@ export function EcoMap({ points = [], center = MEDELLIN_COORDS, zoom = 13, onMap
 
         setHeatmapLayer(heatmap);
         setDirectionsRenderer(renderer);
+        setDirectionsService(new DirectionsService());
         setMap(mapInstance);
 
-        // Empezar a rastrear la ubicación del usuario
-        if (navigator.geolocation) {
-          navigator.geolocation.watchPosition(
-            (pos) => {
-              setCurrentLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-            },
-            (err) => console.error("Error obteniendo ubicación:", err),
-            { enableHighAccuracy: true, maximumAge: 10000 }
-          );
-        }
+        // El rastreo de ubicación se maneja en el componente padre (RecicladorView/TrabajadorView/CiudadanoView)
       } catch (e) {
         console.error("Google Maps Error:", e);
       }
@@ -171,7 +163,7 @@ export function EcoMap({ points = [], center = MEDELLIN_COORDS, zoom = 13, onMap
 
     // 3. Dibujar marcador del usuario y trazar ruta
     useEffect(() => {
-      if (!map || !google || !currentLocation) return;
+      if (!map || !google || !userLocation) return;
 
       if (userRole === 'admin') {
         if (userMarkerRef.current) {
@@ -184,13 +176,13 @@ export function EcoMap({ points = [], center = MEDELLIN_COORDS, zoom = 13, onMap
       // Crear marcador del camión/usuario si no existe
       if (!userMarkerRef.current) {
         let iconColor = '#3b82f6'; // Ciudadano: Azul
-        let iconPath = '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'; // User SVG
+        let iconPath = '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'; 
         
         if (userRole === 'reciclador') {
           iconColor = '#10b981'; // Reciclador: Verde
         } else if (userRole === 'trabajador') {
           iconColor = '#f97316'; // Trabajador: Naranja
-          iconPath = '<path d="M10 17h4V5H2v12h3"/><path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5"/><path d="M14 17h1"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/>'; // Truck SVG
+          iconPath = '<path d="M10 17h4V5H2v12h3"/><path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5"/><path d="M14 17h1"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/>';
         }
 
         const svgHtml = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5)); background: #111827; border-radius: 50%; padding: 6px; border: 3px solid ${iconColor};">${iconPath}</svg>`;
@@ -198,39 +190,35 @@ export function EcoMap({ points = [], center = MEDELLIN_COORDS, zoom = 13, onMap
         container.innerHTML = svgHtml;
 
         userMarkerRef.current = new google.AdvancedMarkerElement({
-          position: currentLocation,
+          position: userLocation,
           map,
           title: 'Tu Ubicación',
           content: container,
         });
       } else {
-        userMarkerRef.current.position = currentLocation;
+        userMarkerRef.current.position = userLocation;
       }
 
       // Calcular ruta si hay un objetivo
-      if (routeTarget && directionsRenderer) {
-        const calculateRoute = async () => {
-          const { DirectionsService } = await importLibrary('routes');
-          const directionsService = new DirectionsService();
-
-          directionsService.route({
-            origin: currentLocation,
-            destination: routeTarget,
-            travelMode: 'DRIVING',
-          }, (response, status) => {
-            if (status === 'OK') {
-              directionsRenderer.setDirections(response);
-            } else {
-              console.error("Fallo al generar ruta:", status);
-            }
-          });
-        };
-        calculateRoute();
+      if (routeTarget && directionsRenderer && directionsService) {
+        directionsService.route({
+          origin: userLocation,
+          destination: routeTarget,
+          travelMode: window.google.maps.TravelMode.DRIVING,
+        }, (response, status) => {
+          if (status === 'OK') {
+            directionsRenderer.setDirections(response);
+            map.panTo(userLocation);
+            if (map.getZoom() < 16) map.setZoom(17);
+          } else {
+            console.error("Fallo al generar ruta:", status);
+          }
+        });
       } else if (directionsRenderer) {
-        directionsRenderer.setDirections({ routes: [] }); // Limpiar ruta si no hay target
+        directionsRenderer.setDirections({ routes: [] });
       }
 
-    }, [currentLocation, routeTarget, map, google, directionsRenderer, userRole]);
+    }, [userLocation, routeTarget, map, google, directionsRenderer, directionsService, userRole]);
 
   return (
     <div className="w-full h-full relative overflow-hidden rounded-[2rem]">

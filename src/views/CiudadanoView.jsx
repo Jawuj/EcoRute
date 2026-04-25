@@ -11,6 +11,24 @@ export function CiudadanoView({ user, showToast }) {
   const [location, setLocation] = useState({ lat: 6.2442, lng: -75.5812 });
   const [imageFile, setImageFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  // Cargar cooldown inicial desde localStorage
+  React.useEffect(() => {
+    const lastReport = localStorage.getItem(`last_report_${user.id}`);
+    if (lastReport) {
+      const remaining = 60 - Math.floor((Date.now() - parseInt(lastReport)) / 1000);
+      if (remaining > 0) setCooldown(remaining);
+    }
+  }, []);
+
+  // Manejar el contador del cooldown
+  React.useEffect(() => {
+    if (cooldown > 0) {
+      const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [cooldown]);
 
   React.useEffect(() => {
     if (navigator.geolocation) {
@@ -122,6 +140,12 @@ export function CiudadanoView({ user, showToast }) {
       
       setReported(true);
       setImageFile(null);
+      
+      // Activar cooldown de 1 minuto (60 segundos)
+      const now = Date.now();
+      localStorage.setItem(`last_report_${user.id}`, now.toString());
+      setCooldown(60);
+
       setTimeout(() => setReported(false), 4000);
     } catch (err) {
       console.error("Error completo:", err);
@@ -201,11 +225,14 @@ export function CiudadanoView({ user, showToast }) {
               ) : (
                 <button 
                   type="submit" 
-                  disabled={!material || !imageFile || loading || uploading}
+                  disabled={!material || !imageFile || loading || uploading || cooldown > 0}
                   className="btn-eco w-full bg-blue-600 hover:bg-blue-500 py-4 shadow-2xl shadow-blue-600/30 text-white disabled:opacity-50"
                 >
-                  {uploading ? 'Subiendo imagen...' : (loading ? 'Enviando reporte...' : 'Confirmar Reporte')}
-                  {!loading && !uploading && <Send size={18} />}
+                  {uploading ? 'Subiendo imagen...' : 
+                   loading ? 'Enviando reporte...' : 
+                   cooldown > 0 ? `Espera ${cooldown}s para otro reporte` : 
+                   'Confirmar Reporte'}
+                  {!loading && !uploading && cooldown === 0 && <Send size={18} />}
                 </button>
               )}
             </AnimatePresence>
@@ -229,6 +256,7 @@ export function CiudadanoView({ user, showToast }) {
               points={[{ ubicacion: location }]} 
               center={location} 
               zoom={15} 
+              userLocation={location}
               onMapClick={(loc) => {
                 // Restringir área a Medellín (Aprox: Lat 6.1 a 6.4, Lng -75.7 a -75.4)
                 if (loc.lat >= 6.1 && loc.lat <= 6.4 && loc.lng >= -75.7 && loc.lng <= -75.4) {
