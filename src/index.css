@@ -14,11 +14,11 @@ body {
   color: white;
   min-height: 100vh;
   overflow-x: hidden;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 #root {
-  zoom: 0.85;
+  zoom: 0.95;
 }
 
 .role-bg-transition {
@@ -59,7 +59,7 @@ body {
 .role-trabajador { background: radial-gradient(circle at top right, #9a3412 0%, #431407 100%); }
 
 .btn-eco {
-  @apply px-4 py-2 rounded-lg font-black uppercase tracking-[0.12em] transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-[8px] border-2 border-transparent;
+  @apply px-4 py-2 rounded-lg font-black uppercase tracking-[0.12em] transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-[10px] border-2 border-transparent;
 }
 
 .btn-primary {
@@ -71,7 +71,7 @@ body {
 }
 
 input:not([type="checkbox"]) {
-  @apply bg-white/10 border border-white/5 rounded-lg px-4 py-2.5 outline-none focus:border-white/20 transition-all text-white placeholder-white/10 font-medium text-xs;
+  @apply bg-white/10 border border-white/5 rounded-lg px-4 py-2.5 outline-none focus:border-white/20 transition-all text-white placeholder-white/10 font-medium text-sm;
 }
 
 #map {

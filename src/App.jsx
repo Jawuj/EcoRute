@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CiudadanoView } from './views/CiudadanoView';
 import { RecicladorView } from './views/RecicladorView';
 import { AdminView } from './views/AdminView';
@@ -10,7 +10,10 @@ import { EcoMap } from './components/EcoMap';
 import { ToastContainer } from './components/Toast.jsx';
 
 export default function App() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem('ecorute_user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
   const [name, setName] = useState('');
   const [role, setRole] = useState(null);
   const [password, setPassword] = useState('');
@@ -19,6 +22,14 @@ export default function App() {
 
   const [isRegistering, setIsRegistering] = useState(false);
   const [toasts, setToasts] = useState([]);
+
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('ecorute_user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('ecorute_user');
+    }
+  }, [user]);
 
   const showToast = (message, type = 'success') => {
     const id = Date.now();
@@ -114,13 +125,13 @@ export default function App() {
             <div className="flex gap-2 p-1 bg-white/5 rounded-2xl border border-white/10">
               <button 
                 onClick={() => setIsRegistering(false)}
-                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!isRegistering ? 'bg-white text-black' : 'text-gray-500'}`}
+                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!isRegistering ? 'bg-white text-black' : 'text-white/80'}`}
               >
                 Entrar
               </button>
               <button 
                 onClick={() => setIsRegistering(true)}
-                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isRegistering ? 'bg-white text-black' : 'text-gray-500'}`}
+                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isRegistering ? 'bg-white text-black' : 'text-white/80'}`}
               >
                 Registrar
               </button>
@@ -131,7 +142,7 @@ export default function App() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Tu Identificación</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-white/80 ml-1">Tu Identificación</label>
                   <input
                     type="text"
                     placeholder="Ej: Juan Pérez"
@@ -143,9 +154,9 @@ export default function App() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Contraseña</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-white/80 ml-1">Contraseña</label>
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/80" size={18} />
                     <input
                       type="password"
                       placeholder="••••••••"
@@ -160,7 +171,7 @@ export default function App() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Selecciona tu Perfil</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-white/80 ml-1">Selecciona tu Perfil</label>
                 <div className="grid grid-cols-2 gap-3">
                   {roleConfigs
                     .filter(cfg => !isRegistering || !cfg.secure || cfg.id !== 'admin')
@@ -172,7 +183,7 @@ export default function App() {
                       className={`group p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${role === cfg.id ? `${cfg.border} ${cfg.bg}` : 'border-white/5 hover:border-white/10 hover:bg-white/5'}`}
                     >
                       <cfg.icon className={`${role === cfg.id ? cfg.color : 'text-gray-600'}`} size={24} />
-                      <span className={`text-[9px] font-black uppercase tracking-widest ${role === cfg.id ? 'text-white' : 'text-gray-500'}`}>{cfg.label}</span>
+                      <span className={`text-[9px] font-black uppercase tracking-widest ${role === cfg.id ? 'text-white' : 'text-white/80'}`}>{cfg.label}</span>
                     </button>
                   ))}
                 </div>
@@ -196,7 +207,7 @@ export default function App() {
 
               <div className="relative flex items-center py-2">
                 <div className="flex-grow border-t border-white/5"></div>
-                <span className="flex-shrink mx-4 text-[10px] font-black text-gray-600 uppercase tracking-widest">Ó acceso rápido</span>
+                <span className="flex-shrink mx-4 text-[10px] font-black text-white/80 uppercase tracking-widest">Ó acceso rápido</span>
                 <div className="flex-grow border-t border-white/5"></div>
               </div>
 
@@ -253,7 +264,7 @@ export default function App() {
           </div>
           <div className="flex items-center gap-6">
             <div className="text-right hidden md:block">
-              <p className="text-[10px] uppercase font-bold text-gray-500">Sesión iniciada</p>
+              <p className="text-[10px] uppercase font-bold text-white">Sesión iniciada</p>
               <p className="text-sm font-bold tracking-tight">{user.name}</p>
             </div>
             <button 

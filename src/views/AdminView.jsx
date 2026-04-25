@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { BarChart3, TrendingUp, Leaf, Building2, Map as MapIcon, Users, ArrowUpRight } from 'lucide-react';
+import { BarChart3, TrendingUp, Leaf, Building2, Map as MapIcon, Users, ArrowUpRight, Trash2 } from 'lucide-react';
 import { EcoMap } from '../components/EcoMap';
 import { supabase } from '../supabase';
 
@@ -67,6 +67,18 @@ export function AdminView({ user, showToast }) {
     }
   };
 
+  const handleDeleteSingleUser = async (id) => {
+    if (!confirm(`¿Estás seguro de borrar este usuario?`)) return;
+    try {
+      const { error } = await supabase.from('usuarios').delete().eq('id', id);
+      if (error) throw error;
+      setAllUsers(prev => prev.filter(u => u.id !== id));
+      showToast("Usuario borrado con éxito");
+    } catch (err) {
+      showToast("Error al borrar usuario: " + err.message, 'error');
+    }
+  };
+
   const handleDeleteReports = async () => {
     if (!confirm(`¿Estás seguro de borrar ${selectedReports.length} reportes?`)) return;
     try {
@@ -77,6 +89,18 @@ export function AdminView({ user, showToast }) {
       showToast("Reportes borrados con éxito");
     } catch (err) {
       showToast("Error al borrar reportes: " + err.message, 'error');
+    }
+  };
+
+  const handleDeleteSingleReport = async (id) => {
+    if (!confirm(`¿Estás seguro de borrar este reporte?`)) return;
+    try {
+      const { error } = await supabase.from('reportes').delete().eq('id', id);
+      if (error) throw error;
+      setReports(prev => prev.filter(r => r.id !== id));
+      showToast("Reporte borrado con éxito");
+    } catch (err) {
+      showToast("Error al borrar reporte: " + err.message, 'error');
     }
   };
 
@@ -213,6 +237,7 @@ export function AdminView({ user, showToast }) {
                   <th className="p-4 text-[10px] font-black uppercase text-gray-500 tracking-widest">Nombre</th>
                   <th className="p-4 text-[10px] font-black uppercase text-gray-500 tracking-widest">Rol</th>
                   <th className="p-4 text-[10px] font-black uppercase text-gray-500 tracking-widest">Fecha Registro</th>
+                  <th className="p-4 text-[10px] font-black uppercase text-gray-500 tracking-widest text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -222,6 +247,17 @@ export function AdminView({ user, showToast }) {
                     <td className="p-4 font-bold">{user.nombre}</td>
                     <td className="p-4"><span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase border ${user.rol === 'admin' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' : 'bg-blue-500/10 text-blue-500 border-blue-500/20'}`}>{user.rol}</span></td>
                     <td className="p-4 text-[10px] text-gray-600 font-bold">{user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}</td>
+                    <td className="p-4 text-right">
+                      {user.rol !== 'admin' && (
+                        <button 
+                          onClick={() => handleDeleteSingleUser(user.id)}
+                          className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-colors border border-red-500/20"
+                          title="Borrar Usuario"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -252,6 +288,7 @@ export function AdminView({ user, showToast }) {
                   <th className="p-4 text-[10px] font-black uppercase text-gray-500 tracking-widest">Estado</th>
                   <th className="p-4 text-[10px] font-black uppercase text-gray-500 tracking-widest">Fecha</th>
                   <th className="p-4 text-[10px] font-black uppercase text-gray-500 tracking-widest">Imagen</th>
+                  <th className="p-4 text-[10px] font-black uppercase text-gray-500 tracking-widest text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -263,6 +300,15 @@ export function AdminView({ user, showToast }) {
                     <td className="p-4 text-xs text-gray-500">{new Date(report.created_at).toLocaleString()}</td>
                     <td className="p-4">
                       {report.imagen_url && <img src={report.imagen_url} className="w-10 h-10 rounded-lg object-cover" alt="Reporte" />}
+                    </td>
+                    <td className="p-4 text-right">
+                      <button 
+                        onClick={() => handleDeleteSingleReport(report.id)}
+                        className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-colors border border-red-500/20"
+                        title="Borrar Reporte"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </td>
                   </tr>
                 ))}

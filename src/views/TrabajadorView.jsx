@@ -70,6 +70,10 @@ export function TrabajadorView({ user, showToast }) {
       if (newStatus === 'completado') {
         setActivePickup(null);
         setIsNavigating(false);
+        showToast("¡Completado! El reporte se eliminará en 3 minutos.");
+        setTimeout(async () => {
+          await supabase.from('reportes').delete().eq('id', pickup.id);
+        }, 180000);
       }
     } catch (err) {
       console.error("Error al actualizar estado:", err);

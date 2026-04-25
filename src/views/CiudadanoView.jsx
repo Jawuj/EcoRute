@@ -34,6 +34,47 @@ export function CiudadanoView({ user, showToast }) {
     }
   };
 
+  // Función para comprimir imágenes y hacer el reporte más rápido
+  const compressImage = (file) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 800;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob((blob) => {
+            resolve(new File([blob], file.name, {
+              type: 'image/jpeg',
+              lastModified: Date.now()
+            }));
+          }, 'image/jpeg', 0.7);
+        };
+      };
+    });
+  };
+
   const handleReport = async (e) => {
     e.preventDefault();
     if (!material) return;
@@ -42,13 +83,18 @@ export function CiudadanoView({ user, showToast }) {
     let publicUrl = null;
 
     try {
-      // 1. Subir imagen si existe
+      // 1. Comprimir y subir imagen si existe
       if (imageFile) {
         setUploading(true);
-        const fileName = `${Date.now()}_${imageFile.name}`;
+        const compressedFile = await compressImage(imageFile);
+        
+        // Sanitizar el nombre del archivo para evitar el error "Invalid key" de Supabase
+        const sanitizedName = compressedFile.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
+        const fileName = `${Date.now()}_${sanitizedName}.jpg`;
+        
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('fotos_reportes')
-          .upload(fileName, imageFile);
+          .upload(fileName, compressedFile);
 
         if (uploadError) throw uploadError;
 
