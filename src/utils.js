@@ -22,3 +22,14 @@ export function calculateDistance(pos1, pos2) {
 }
 
 export const COMPLETION_THRESHOLD_METERS = 100; // 100 metros de margen
+
+// Factores de impacto aproximados para Medellín, Colombia
+export const IMPACT_FACTORS = {
+  biologico: { weight: 1.0, kg: 5.0, co2: 2.5 },
+  escombros: { weight: 0.8, kg: 20.0, co2: 0.5 },
+  basura: { weight: 0.6, kg: 3.0, co2: 0.1 },
+  plastico: { weight: 0.5, kg: 1.5, co2: 1.5 },
+  vidrio: { weight: 0.4, kg: 2.0, co2: 0.3 },
+  carton: { weight: 0.3, kg: 1.0, co2: 0.9 },
+  default: { weight: 0.2, kg: 1.0, co2: 0.1 }
+};

@@ -92,6 +92,7 @@ input:not([type="checkbox"]) {
 /* Fix para Leaflet en móviles */
 .leaflet-container {
   z-index: 1 !important;
+  background-color: #111827 !important;
 }
 
 /* Ajustes de espaciado responsivo */
@@ -142,3 +143,9 @@ input:not([type="checkbox"]) {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Quitar atribución de Leaflet definitivamente */
+.leaflet-control-attribution {
+  display: none !important;
+}
+.leaflet-routing-container { display: none !important; }

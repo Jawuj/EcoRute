@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Camera, MapPin, Send, Trash2, Box, Wine, CheckCircle, Trash, AlertTriangle } from 'lucide-react';
+import { Camera, MapPin, Send, Trash2, Box, Wine, CheckCircle, Trash, AlertTriangle, Biohazard } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabase';
 import { EcoMap } from '../components/EcoMap';
@@ -9,6 +9,7 @@ export function CiudadanoView({ user, showToast }) {
   const [reported, setReported] = useState(false);
   const [loading, setLoading] = useState(false);
   const [location, setLocation] = useState({ lat: 6.2442, lng: -75.5812 });
+  const [userLoc, setUserLoc] = useState(null);
   const [imageFile, setImageFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
@@ -37,7 +38,14 @@ export function CiudadanoView({ user, showToast }) {
       const watchId = navigator.geolocation.watchPosition(
         (pos) => {
           const newLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-          setLocation(newLoc);
+          setUserLoc(newLoc);
+          
+          // Solo inicializar location si es la primera vez que recibimos señal
+          setLocation(prev => {
+            if (prev.lat === 6.2442 && prev.lng === -75.5812) return newLoc;
+            return prev;
+          });
+
           if (pos.coords.heading !== null) {
             setUserHeading(pos.coords.heading);
           }
@@ -65,6 +73,7 @@ export function CiudadanoView({ user, showToast }) {
     { id: 'plastico', name: 'Plástico', icon: Trash2, color: 'from-yellow-300 to-yellow-500 shadow-yellow-400/20' },
     { id: 'basura', name: 'Basura', icon: Trash, color: 'from-gray-500 to-gray-700 shadow-gray-500/20' },
     { id: 'escombros', name: 'Escombros', icon: AlertTriangle, color: 'from-red-500 to-red-700 shadow-red-500/20' },
+    { id: 'biologico', name: 'Biológico', icon: Biohazard, color: 'from-emerald-400 to-emerald-600 shadow-emerald-500/20' },
   ];
 
   const handleFileChange = (e) => {
@@ -272,38 +281,25 @@ export function CiudadanoView({ user, showToast }) {
               <span className="text-[9px] font-black text-green-500 uppercase tracking-widest">GPS Activo</span>
             </div>
           </div>
-          <div className="flex-1 min-h-[300px]">
-            <EcoMap 
-              points={[{ ubicacion: location, material: material }]} 
-              center={location} 
-              zoom={15} 
-              userLocation={location} // Cambiado a location para ver la flecha
-              userHeading={userHeading}
-              userRole="ciudadano"
-              onMapClick={(loc) => {
-                // Restringir área a Medellín (Aprox: Lat 6.1 a 6.4, Lng -75.7 a -75.4)
-                if (loc.lat >= 6.1 && loc.lat <= 6.4 && loc.lng >= -75.7 && loc.lng <= -75.4) {
-                  setLocation(loc);
-                } else {
-                  showToast("Eco Rute solo está disponible en Medellín.", 'info');
-                }
-              }} 
-            />
-
-            <button 
-              onClick={() => {
-                if (navigator.geolocation) {
-                  navigator.geolocation.getCurrentPosition((pos) => {
-                    setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-                    showToast("Ubicación actualizada");
-                  });
-                }
-              }}
-              className="absolute top-20 right-4 p-3 bg-blue-600 text-white rounded-2xl shadow-xl hover:scale-110 transition-all z-[1000]"
-              title="Usar mi ubicación actual"
-            >
-              <MapPin size={20} />
-            </button>
+          <div className="flex-1 min-h-[300px] p-4 lg:p-6">
+            <div className="w-full h-full rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl">
+              <EcoMap 
+                points={[{ ubicacion: location, material: material }]} 
+                center={location} 
+                zoom={15} 
+                userLocation={userLoc} 
+                userHeading={userHeading}
+                userRole="ciudadano"
+                onMapClick={(loc) => {
+                  // Restringir área a Medellín (Aprox: Lat 6.1 a 6.4, Lng -75.7 a -75.4)
+                  if (loc.lat >= 6.1 && loc.lat <= 6.4 && loc.lng >= -75.7 && loc.lng <= -75.4) {
+                    setLocation(loc);
+                  } else {
+                    showToast("Eco Rute solo está disponible en Medellín.", 'info');
+                  }
+                }} 
+              />
+            </div>
           </div>
           <div className="p-4 bg-black/40 backdrop-blur-md">
             <p className="text-[10px] text-gray-500 italic text-center font-bold">Haz clic en el mapa para ajustar la ubicación exacta</p>

@@ -64,7 +64,7 @@ export function TrabajadorView({ user, showToast }) {
       const { data, error } = await supabase
         .from('reportes')
         .select('*')
-        .in('material', ['basura', 'escombros'])
+        .in('material', ['basura', 'escombros', 'biologico'])
         .order('created_at', { ascending: false });
       
       if (!error) setPickups(data);
@@ -104,10 +104,7 @@ export function TrabajadorView({ user, showToast }) {
       if (newStatus === 'completado') {
         setActivePickup(null);
         setIsNavigating(false);
-        showToast("¡Completado! El reporte se eliminará en 3 minutos.");
-        setTimeout(async () => {
-          await supabase.from('reportes').delete().eq('id', pickup.id);
-        }, 180000);
+        showToast("¡Tarea resuelta con éxito!");
       }
     } catch (err) {
       console.error("Error al actualizar estado:", err);
@@ -156,7 +153,7 @@ export function TrabajadorView({ user, showToast }) {
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto px-4 space-y-3 custom-scrollbar">
           {filteredPickups.map((pickup) => (
             <motion.div
               key={pickup.id}
@@ -234,7 +231,7 @@ export function TrabajadorView({ user, showToast }) {
       {/* Mapa y Detalle */}
       <div className={`transition-all duration-500 relative ${isMapFull ? 'fixed inset-0 z-[5000] p-0' : 'lg:col-span-2 glass-panel border-white/5 overflow-hidden'}`}>
         <EcoMap 
-          points={pickups} 
+          points={filteredPickups} 
           center={activePickup?.ubicacion || userLocation || MEDELLIN_COORDS} 
           zoom={14} 
           userLocation={userLocation}
@@ -249,7 +246,7 @@ export function TrabajadorView({ user, showToast }) {
             <motion.div 
               initial={{ y: 100 }} 
               animate={{ y: 0 }}
-              className="absolute bottom-4 left-4 right-4 glass-panel p-4 md:p-6 bg-black/60 backdrop-blur-xl border-orange-500/30 flex flex-col md:flex-row items-center justify-between gap-3 md:gap-6 z-[9999]"
+              className="absolute bottom-4 left-4 right-4 glass-panel p-4 md:p-6 bg-black/80 backdrop-blur-2xl border-orange-500/30 flex flex-col md:flex-row items-center justify-between gap-3 md:gap-6 z-[9999] shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
             >
               <div className="flex items-center gap-4 md:gap-6">
                 {activePickup.imagen_url && (

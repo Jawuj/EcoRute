@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { BarChart3, TrendingUp, Leaf, Building2, Map as MapIcon, Users, ArrowUpRight, Trash2 } from 'lucide-react';
+import { BarChart3, TrendingUp, Leaf, Building2, Map as MapIcon, Users, ArrowUpRight, Trash2, Globe } from 'lucide-react';
 import { EcoMap } from '../components/EcoMap';
 import { supabase } from '../supabase';
 import { ImageModal } from '../components/ImageModal';
+import { IMPACT_FACTORS } from '../utils';
 
 export function AdminView({ user, showToast }) {
   const [reports, setReports] = useState([]);
@@ -51,8 +52,20 @@ export function AdminView({ user, showToast }) {
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
 
+  const completedImpactReports = reports.filter(r => r.estado === 'completado');
+  let totalKg = 0;
+  let totalCo2 = 0;
+
+  completedImpactReports.forEach(r => {
+    const factor = IMPACT_FACTORS[r.material] || IMPACT_FACTORS.default;
+    totalKg += factor.kg;
+    totalCo2 += factor.kg * factor.co2;
+  });
+
   const stats = [
     { label: 'Ciudadanos Registrados', value: usersCount.toString(), icon: Users, color: 'text-blue-400', bg: 'bg-blue-400/10' },
+    { label: 'Kg Recuperados (Aprox)', value: `${totalKg.toLocaleString()} kg`, icon: Leaf, color: 'text-green-400', bg: 'bg-green-400/10' },
+    { label: 'CO2 Mitigado (Aprox)', value: `${totalCo2.toLocaleString()} kg`, icon: Globe, color: 'text-cyan-400', bg: 'bg-cyan-400/10' },
     { label: 'Reportes Históricos', value: reports.length.toString(), icon: TrendingUp, color: 'text-purple-400', bg: 'bg-purple-400/10' },
   ];
 
@@ -133,7 +146,7 @@ export function AdminView({ user, showToast }) {
 
       {viewMode === 'stats' && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {stats.map((stat, idx) => (
               <motion.div 
                 key={idx}
