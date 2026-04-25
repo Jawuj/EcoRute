@@ -112,7 +112,7 @@ input:not([type="checkbox"]) {
   
   .h-\[calc\(100vh-10rem\)\] {
     height: auto !important;
-    min-height: calc(100vh - 8rem);
+    min-height: calc(100dvh - 8rem);
     display: flex;
     flex-direction: column;
     gap: 1.5rem !important;
@@ -120,10 +120,11 @@ input:not([type="checkbox"]) {
 
   /* El mapa va primero en móvil y ocupa espacio fijo */
   .lg\:col-span-2 {
-    height: 50vh !important;
-    min-height: 350px;
+    height: 60dvh !important;
+    min-height: 400px;
     order: -1; 
   }
+
 
   /* La lista de rutas se ajusta debajo */
   .lg\:col-span-1 {

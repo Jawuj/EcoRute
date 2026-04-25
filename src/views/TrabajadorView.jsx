@@ -18,16 +18,46 @@ export function TrabajadorView({ user, showToast }) {
   const [isMapFull, setIsMapFull] = useState(false);
   const [modalImage, setModalImage] = useState(null);
 
+  const [userHeading, setUserHeading] = useState(0);
+
   useEffect(() => {
     if (navigator.geolocation) {
       const watchId = navigator.geolocation.watchPosition(
-        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        (pos) => {
+          setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          if (pos.coords.heading !== null) {
+            setUserHeading(pos.coords.heading);
+          }
+        },
         (err) => console.error("Error rastreando ubicación:", err),
-        { enableHighAccuracy: true, maximumAge: 5000 }
+        { enableHighAccuracy: true, maximumAge: 1000, timeout: 5000 }
       );
       return () => navigator.geolocation.clearWatch(watchId);
     }
   }, []);
+
+  useEffect(() => {
+    const handleOrientation = (e) => {
+      const heading = e.webkitCompassHeading || (360 - e.alpha);
+      if (heading) setUserHeading(heading);
+    };
+    window.addEventListener('deviceorientation', handleOrientation, true);
+    return () => window.removeEventListener('deviceorientation', handleOrientation);
+  }, []);
+
+  const requestOrientationPermission = async () => {
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      try {
+        const permissionState = await DeviceOrientationEvent.requestPermission();
+        if (permissionState === 'granted') {
+          showToast("Brújula activada");
+        }
+      } catch (error) {
+        console.error("Error solicitando permiso de orientación:", error);
+      }
+    }
+  };
+
 
   useEffect(() => {
     const fetchPickups = async () => {
@@ -98,6 +128,13 @@ export function TrabajadorView({ user, showToast }) {
           <div className="flex flex-col items-end gap-2">
             <div className="flex gap-2">
               <button 
+                onClick={requestOrientationPermission}
+                className="px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border bg-blue-500/10 text-blue-500 border-blue-500/30 transition-all hover:bg-blue-500 hover:text-white"
+                title="Activar Brújula"
+              >
+                Brújula
+              </button>
+              <button 
                 onClick={() => setShowCompleted(!showCompleted)}
                 className={`px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${showCompleted ? 'bg-orange-500/10 text-orange-500 border-orange-500/30' : 'bg-white/5 text-gray-500 border-white/10'}`}
               >
@@ -110,6 +147,7 @@ export function TrabajadorView({ user, showToast }) {
                 {showHeatmap ? 'Calor' : 'Calor'}
               </button>
             </div>
+
             <div className="px-3 py-1 bg-orange-500/10 border border-orange-500/20 rounded-xl">
               <span className="text-orange-500 text-[9px] font-black tracking-widest uppercase">
                 {pickups.filter(p => p.estado === 'pendiente').length} PENDIENTES
@@ -200,11 +238,13 @@ export function TrabajadorView({ user, showToast }) {
           center={activePickup?.ubicacion || userLocation || MEDELLIN_COORDS} 
           zoom={14} 
           userLocation={userLocation}
+          userHeading={userHeading}
           showHeatmap={showHeatmap}
           routeTarget={isNavigating ? activePickup?.ubicacion : null}
           onRouteFound={(info) => setRouteInfo(info)}
           onMarkerClick={(pickup) => { setActivePickup(pickup); setIsNavigating(true); setRouteInfo(null); }}
         >
+
           {activePickup && (
             <motion.div 
               initial={{ y: 100 }} 

@@ -17,17 +17,51 @@ export function RecicladorView({ user, showToast }) {
   const [isMapFull, setIsMapFull] = useState(false);
   const [modalImage, setModalImage] = useState(null); // Nuevo filtro
 
-  // Rastrear ubicación del usuario en tiempo real
+  const [userHeading, setUserHeading] = useState(0);
+
+  // Rastrear ubicación y orientación del usuario
   useEffect(() => {
     if (navigator.geolocation) {
       const watchId = navigator.geolocation.watchPosition(
-        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        (pos) => {
+          setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          // Usar heading del GPS si está disponible, sino mantener el actual
+          if (pos.coords.heading !== null) {
+            setUserHeading(pos.coords.heading);
+          }
+        },
         (err) => console.error("Error rastreando ubicación:", err),
-        { enableHighAccuracy: true, maximumAge: 5000 }
+        { enableHighAccuracy: true, maximumAge: 1000, timeout: 5000 }
       );
       return () => navigator.geolocation.clearWatch(watchId);
     }
   }, []);
+
+  // Manejar orientación del dispositivo (Brújula)
+  useEffect(() => {
+    const handleOrientation = (e) => {
+      // e.webkitCompassHeading es específico de iOS Safari
+      const heading = e.webkitCompassHeading || (360 - e.alpha);
+      if (heading) setUserHeading(heading);
+    };
+
+    window.addEventListener('deviceorientation', handleOrientation, true);
+    return () => window.removeEventListener('deviceorientation', handleOrientation);
+  }, []);
+
+  const requestOrientationPermission = async () => {
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      try {
+        const permissionState = await DeviceOrientationEvent.requestPermission();
+        if (permissionState === 'granted') {
+          showToast("Brújula activada");
+        }
+      } catch (error) {
+        console.error("Error solicitando permiso de orientación:", error);
+      }
+    }
+  };
+
 
   // Escuchar reportes en tiempo real desde Supabase
   useEffect(() => {
@@ -97,18 +131,28 @@ export function RecicladorView({ user, showToast }) {
             <p className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-500">Gestión de puntos</p>
           </div>
           <div className="flex flex-col items-end gap-2">
-            <button 
-              onClick={() => setShowCompleted(!showCompleted)}
-              className={`px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${showCompleted ? 'bg-green-500/10 text-green-500 border-green-500/30' : 'bg-white/5 text-gray-500 border-white/10'}`}
-            >
-              {showCompleted ? 'Ocultar completados' : 'Ver completados'}
-            </button>
+            <div className="flex gap-2">
+              <button 
+                onClick={requestOrientationPermission}
+                className="px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border bg-blue-500/10 text-blue-500 border-blue-500/30 transition-all hover:bg-blue-500 hover:text-white"
+                title="Activar Brújula"
+              >
+                Brújula
+              </button>
+              <button 
+                onClick={() => setShowCompleted(!showCompleted)}
+                className={`px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${showCompleted ? 'bg-green-500/10 text-green-500 border-green-500/30' : 'bg-white/5 text-gray-500 border-white/10'}`}
+              >
+                {showCompleted ? 'Ocultar completados' : 'Ver completados'}
+              </button>
+            </div>
             <div className="px-3 py-1 bg-green-500/10 border border-green-500/20 rounded-xl">
               <span className="text-green-500 text-[9px] font-black tracking-widest uppercase">
                 {pickups.filter(p => p.estado === 'pendiente').length} PENDIENTES
               </span>
             </div>
           </div>
+
         </header>
 
         <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
@@ -190,10 +234,12 @@ export function RecicladorView({ user, showToast }) {
             center={activePickup?.ubicacion || userLocation || MEDELLIN_COORDS} 
             zoom={14} 
             userLocation={userLocation}
+            userHeading={userHeading}
             routeTarget={isNavigating ? activePickup?.ubicacion : null}
             onRouteFound={(info) => setRouteInfo(info)}
             onMarkerClick={(pickup) => { setActivePickup(pickup); setIsNavigating(true); setRouteInfo(null); }}
           >
+
             {activePickup && (
               <motion.div 
                 initial={{ y: 100 }} 

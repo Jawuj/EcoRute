@@ -56,56 +56,71 @@ function HeatmapLayer({ points }) {
   return null;
 }
 
-// Componente para la ruta (Routing Machine)
+// Componente para la ruta (Routing Machine) optimizado
 function Routing({ origin, destination, userRole, onRouteFound }) {
   const map = useMap();
+  const routingControlRef = useRef(null);
 
   useEffect(() => {
     if (!map || !origin || !destination) return;
 
     const routeColor = userRole === 'trabajador' ? '#f97316' : '#10b981';
 
-    const routingControl = L.Routing.control({
-      waypoints: [
+    if (!routingControlRef.current) {
+      routingControlRef.current = L.Routing.control({
+        waypoints: [
+          L.latLng(origin.lat, origin.lng),
+          L.latLng(destination.lat, destination.lng)
+        ],
+        lineOptions: {
+          styles: [{ color: routeColor, weight: 6, opacity: 0.8 }]
+        },
+        addWaypoints: false,
+        draggableWaypoints: false,
+        fitSelectedRoutes: true,
+        show: false,
+        createMarker: () => null
+      }).addTo(map);
+
+      routingControlRef.current.on('routesfound', (e) => {
+        const routes = e.routes;
+        const summary = routes[0].summary;
+        if (onRouteFound) {
+          onRouteFound({
+            time: Math.round(summary.totalTime / 60),
+            distance: (summary.totalDistance / 1000).toFixed(1)
+          });
+        }
+      });
+    } else {
+      // Actualizar solo los waypoints para evitar que la ruta desaparezca
+      routingControlRef.current.setWaypoints([
         L.latLng(origin.lat, origin.lng),
         L.latLng(destination.lat, destination.lng)
-      ],
-      lineOptions: {
-        styles: [{ color: routeColor, weight: 6, opacity: 0.8 }]
-      },
-      addWaypoints: false,
-      draggableWaypoints: false,
-      fitSelectedRoutes: true,
-      show: false,
-      createMarker: () => null
-    }).addTo(map);
-
-    routingControl.on('routesfound', (e) => {
-      const routes = e.routes;
-      const summary = routes[0].summary;
-      if (onRouteFound) {
-        onRouteFound({
-          time: Math.round(summary.totalTime / 60), // en minutos
-          distance: (summary.totalDistance / 1000).toFixed(1) // en km
-        });
-      }
-    });
-
-    // Auto-centrar
-    map.panTo([origin.lat, origin.lng]);
+      ]);
+    }
 
     return () => {
-      if (map && routingControl) {
-        map.removeControl(routingControl);
+      // Solo removemos si el componente se desmonta de verdad (por ejemplo, al cancelar navegación)
+    };
+  }, [map, origin.lat, origin.lng, destination.lat, destination.lng]);
+
+  // Limpieza real al desmontar el componente Routing
+  useEffect(() => {
+    return () => {
+      if (map && routingControlRef.current) {
+        map.removeControl(routingControlRef.current);
+        routingControlRef.current = null;
       }
     };
-  }, [map, origin, destination]);
+  }, [map]);
 
   return null;
 }
 
+
 // Función para generar íconos personalizados con SVG
-const createCustomIcon = (material, estado, isUser = false, userRole = '') => {
+const createCustomIcon = (material, estado, isUser = false, userRole = '', rotation = 0) => {
   let color = '#f59e0b'; // Default Orange
   let iconPath = '';
   let size = 32;
@@ -147,7 +162,7 @@ const createCustomIcon = (material, estado, isUser = false, userRole = '') => {
     }
   }
 
-  const svg = `<div style="display: flex; flex-direction: column; align-items: center;">
+  const svg = `<div style="display: flex; flex-direction: column; align-items: center; transform: rotate(${rotation}deg); transition: transform 0.3s ease;">
     <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="${isUser ? color : 'none'}" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5)); ${isUser ? '' : `background: #111827; border-radius: 50%; padding: 6px; border: 3px solid ${color};`}">${iconPath}</svg>
     ${!isUser ? `<span style="background: ${color}; color: black; font-size: 8px; font-weight: 900; padding: 1px 4px; border-radius: 4px; margin-top: 2px; text-transform: uppercase;">${material}</span>` : ''}
   </div>`;
@@ -159,6 +174,7 @@ const createCustomIcon = (material, estado, isUser = false, userRole = '') => {
     iconAnchor: [size/2, size/2 + 7],
   });
 };
+
 
 // Componente para auto-centrar el mapa en el usuario
 function AutoFollow({ userLocation, active }) {
@@ -201,30 +217,80 @@ function ResizeMap() {
   return null;
 }
 
-export function EcoMap({ children, points = [], center = MEDELLIN_COORDS, zoom = 13, onMapClick, onMarkerClick, onRouteFound, routeTarget = null, showHeatmap = false, userRole = 'ciudadano', userLocation = null }) {
+export function EcoMap({ 
+  children, 
+  points = [], 
+  center = MEDELLIN_COORDS, 
+  zoom = 13, 
+  onMapClick, 
+  onMarkerClick, 
+  onRouteFound, 
+  routeTarget = null, 
+  showHeatmap = false, 
+  userRole = 'ciudadano', 
+  userLocation = null,
+  userHeading = 0 // Nueva prop para la orientación
+}) {
   const containerRef = useRef(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isPseudoFullscreen, setIsPseudoFullscreen] = useState(false);
 
   const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      containerRef.current.requestFullscreen().catch(err => {
-        console.error(`Error attempting to enable full-screen mode: ${err.message}`);
-      });
-      setIsFullscreen(true);
+    const element = containerRef.current;
+    
+    // Intento de Fullscreen Real
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+      const requestMethod = element.requestFullscreen || element.webkitRequestFullscreen || element.mozRequestFullScreen || element.msRequestFullscreen;
+      
+      if (requestMethod) {
+        requestMethod.call(element).catch(() => {
+          // Si falla (común en iPhone), usamos pseudo-fullscreen
+          setIsPseudoFullscreen(true);
+        });
+        setIsFullscreen(true);
+      } else {
+        // Fallback inmediato para iOS
+        setIsPseudoFullscreen(true);
+      }
     } else {
-      document.exitFullscreen();
+      const exitMethod = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+      if (exitMethod) exitMethod.call(document);
       setIsFullscreen(false);
+      setIsPseudoFullscreen(false);
     }
   };
 
   useEffect(() => {
-    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    const handler = () => {
+      const isFull = !!(document.fullscreenElement || document.webkitFullscreenElement);
+      setIsFullscreen(isFull);
+      if (!isFull) setIsPseudoFullscreen(false);
+    };
     document.addEventListener('fullscreenchange', handler);
-    return () => document.removeEventListener('fullscreenchange', handler);
+    document.addEventListener('webkitfullscreenchange', handler);
+    return () => {
+      document.removeEventListener('fullscreenchange', handler);
+      document.removeEventListener('webkitfullscreenchange', handler);
+    };
   }, []);
 
+  // Estilo para pseudo-fullscreen (iOS)
+  const pseudoFullscreenStyles = isPseudoFullscreen ? {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: '100vw',
+    height: '100dvh',
+    zIndex: 9999,
+    borderRadius: 0
+  } : {};
+
   return (
-    <div ref={containerRef} className={`w-full h-full relative overflow-hidden bg-[#111827] ${isFullscreen ? '' : 'rounded-[2rem]'}`}>
+    <div 
+      ref={containerRef} 
+      style={pseudoFullscreenStyles}
+      className={`w-full h-full relative overflow-hidden bg-[#111827] transition-all duration-300 ${isFullscreen || isPseudoFullscreen ? '' : 'rounded-[2rem]'}`}
+    >
       <MapContainer 
         center={[center.lat, center.lng]} 
         zoom={zoom} 
@@ -265,11 +331,11 @@ export function EcoMap({ children, points = [], center = MEDELLIN_COORDS, zoom =
           )
         ))}
 
-        {/* Marcador del Usuario */}
+        {/* Marcador del Usuario con Rotación */}
         {userLocation && userRole !== 'admin' && (
           <Marker 
             position={[userLocation.lat, userLocation.lng]}
-            icon={createCustomIcon(null, null, true, userRole)}
+            icon={createCustomIcon(null, null, true, userRole, userHeading)}
           />
         )}
 
@@ -293,11 +359,12 @@ export function EcoMap({ children, points = [], center = MEDELLIN_COORDS, zoom =
         className="absolute top-24 right-4 p-4 bg-black/60 backdrop-blur-xl border border-white/10 text-white rounded-2xl shadow-2xl hover:scale-110 transition-all z-[9999] group"
         title="Pantalla Completa"
       >
-        {isFullscreen ? <Minimize2 size={24} /> : <Maximize2 size={24} />}
+        {isFullscreen || isPseudoFullscreen ? <Minimize2 size={24} /> : <Maximize2 size={24} />}
         <span className="absolute right-full mr-4 top-1/2 -translate-y-1/2 px-3 py-1 bg-black text-[10px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-          {isFullscreen ? 'Salir Fullscreen' : 'Pantalla Completa'}
+          {(isFullscreen || isPseudoFullscreen) ? 'Salir Fullscreen' : 'Pantalla Completa'}
         </span>
       </button>
     </div>
   );
 }
+

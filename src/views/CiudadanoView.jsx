@@ -30,14 +30,34 @@ export function CiudadanoView({ user, showToast }) {
     }
   }, [cooldown]);
 
+  const [userHeading, setUserHeading] = useState(0);
+
   React.useEffect(() => {
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        (err) => console.error("Geolocalización denegada/error:", err)
+      const watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          const newLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          setLocation(newLoc);
+          if (pos.coords.heading !== null) {
+            setUserHeading(pos.coords.heading);
+          }
+        },
+        (err) => console.error("Geolocalización denegada/error:", err),
+        { enableHighAccuracy: true, maximumAge: 1000 }
       );
+      return () => navigator.geolocation.clearWatch(watchId);
     }
   }, []);
+
+  React.useEffect(() => {
+    const handleOrientation = (e) => {
+      const heading = e.webkitCompassHeading || (360 - e.alpha);
+      if (heading) setUserHeading(heading);
+    };
+    window.addEventListener('deviceorientation', handleOrientation, true);
+    return () => window.removeEventListener('deviceorientation', handleOrientation);
+  }, []);
+
 
   const materials = [
     { id: 'carton', name: 'Cartón', icon: Box, color: 'from-orange-400 to-orange-600 shadow-orange-500/20' },
@@ -257,7 +277,9 @@ export function CiudadanoView({ user, showToast }) {
               points={[{ ubicacion: location, material: material }]} 
               center={location} 
               zoom={15} 
-              userLocation={null} // Ocultar el "muñeco" en esta vista para que no tape el logo del material
+              userLocation={location} // Cambiado a location para ver la flecha
+              userHeading={userHeading}
+              userRole="ciudadano"
               onMapClick={(loc) => {
                 // Restringir área a Medellín (Aprox: Lat 6.1 a 6.4, Lng -75.7 a -75.4)
                 if (loc.lat >= 6.1 && loc.lat <= 6.4 && loc.lng >= -75.7 && loc.lng <= -75.4) {
@@ -267,6 +289,7 @@ export function CiudadanoView({ user, showToast }) {
                 }
               }} 
             />
+
             <button 
               onClick={() => {
                 if (navigator.geolocation) {
