@@ -37,8 +37,8 @@ Esta herramienta busca transformar la gestión ambiental urbana, mejorando los t
 ### Para Administradores (Panel Admin)
 - **Dashboard Estratégico**: Visualización de métricas de impacto ambiental en tiempo real.
 - **Métricas de Impacto**: Cálculo automático de **Kg Recuperados** y **CO2 Mitigado** basado en factores específicos para Medellín.
-- **Supervisión Global**: Monitoreo de toda la actividad de la plataforma y gestión de usuarios/trabajadores.
-- **Mapa de Monitoreo**: Visualización geoespacial con filtros avanzados y mapas de calor prioritarios.
+- **Supervisión Global**: Monitoreo de toda la actividad de la plataforma y gestión de usuarios con **eliminación en cascada segura** para evitar inconsistencias de base de datos.
+- **Mapa de Monitoreo**: Visualización geoespacial con filtros interactivos por tipo de material y estado del reporte (Pendientes vs Atendidos), además de mapas de calor prioritarios.
 
 ---
 
@@ -51,10 +51,12 @@ Esta herramienta busca transformar la gestión ambiental urbana, mejorando los t
 - **Control de Temas**: Alternancia instantánea entre **Modo Oscuro (Dark Matter)** y **Modo Claro (Voyager Light)** para visibilidad óptima en exteriores.
 
 ### ⚡ Experiencia de Usuario Premium
+- **Tutoriales Interactivos**: Sistema de *onboarding* guiado para cada rol (Ciudadano, Reciclador, Trabajador, Admin) que enseña las funcionalidades clave paso a paso la primera vez que inician sesión.
+- **Sistema de Alertas y Modales Propios**: Alertas de confirmación personalizadas (Glassmorphism) que reemplazan los diálogos nativos del navegador para una experiencia de marca consistente.
 - **Diseño Glassmorphic**: Interfaz moderna con efectos de desenfoque y transparencias.
 - **Animaciones Fluidas**: Uso de *Framer Motion* para transiciones entre vistas y micro-interacciones.
-- **Diseño Responsivo**: Adaptado perfectamente para dispositivos móviles (uso en campo) y escritorio (administración).
-- **Trazabilidad Total**: Sistema de auditoría permanente donde ningún reporte se elimina, garantizando el registro histórico de cada intervención.
+- **Diseño Responsivo**: Adaptado perfectamente para dispositivos móviles (uso en campo) y escritorio (administración) incluyendo mapas en pantalla completa nativa.
+- **Seguridad en Formularios**: Manejo de errores de base de datos amigable para el usuario final sin exponer estructura interna del servidor.
 
 ---
 
@@ -154,16 +156,19 @@ EcoRute/
 
 ## Próximos Pasos (Roadmap)
 
+- [ ] **Mejora del mapa de calor**: Implementar un mapa de calor más preciso y eficiente. (Prioridad Alta)
 - [ ] **IA para Clasificación**: Implementación de modelos para identificar tipos de residuos mediante fotos.
 - [ ] **Sistema de Gamificación**: Puntos y recompensas para ciudadanos que reciclan activamente.
 - [ ] **Reportes en PDF**: Generación automática de informes mensuales para entidades gubernamentales.
 - [ ] **Modo Offline**: Registro de reportes sin conexión para zonas con baja cobertura.
+- [ ] **Automatización de Notificaciones**: Implementar notificaciones push para usuarios cuando sus reportes sean atendidos.
 
 ---
 
 ## Contacto
 
 [Repositorio del Proyecto](https://github.com/Jawuj/EcoRute)
+[Página Web del Proyecto](https://eco-rute.vercel.app)
 
 ---
 
