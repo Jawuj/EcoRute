@@ -363,8 +363,10 @@ export function EcoMap({
           const groups = points.reduce((acc, p) => {
             if (!p.ubicacion) return acc;
             const key = `${p.ubicacion.lat.toFixed(4)}|${p.ubicacion.lng.toFixed(4)}`;
-            if (!acc[key]) acc[key] = { ...p, count: 1, materials: [p.material] };
-            else {
+            if (!acc[key]) {
+              acc[key] = { ...p, items: [p], count: 1, materials: [p.material] };
+            } else {
+              acc[key].items.push(p);
               acc[key].count++;
               if (!acc[key].materials.includes(p.material)) acc[key].materials.push(p.material);
               // Si algún punto del grupo está pendiente, el grupo entero se muestra como pendiente

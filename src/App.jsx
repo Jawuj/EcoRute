@@ -8,6 +8,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from './supabase';
 import { EcoMap } from './components/EcoMap';
 import { ToastContainer } from './components/Toast.jsx';
+import { Logo } from './components/Logo';
+import wallpaper from './assets/wallpaperinicio.png';
 
 export default function App() {
   const [user, setUser] = useState(() => {
@@ -66,8 +68,11 @@ export default function App() {
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    setError('');
-    
+    if (password.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres.');
+      return;
+    }
+
     if (role === 'admin') {
       setError('No se permite registrar nuevas cuentas de Administrador.');
       return;
@@ -107,10 +112,10 @@ export default function App() {
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-black relative overflow-hidden">
-        {/* Mapa de fondo */}
-        <div className="absolute inset-0 opacity-40 grayscale-[0.5]">
-          <EcoMap />
-          <div className="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black" />
+        {/* Wallpaper de fondo */}
+        <div className="absolute inset-0 opacity-50 grayscale-[0.2]">
+          <img src={wallpaper} className="w-full h-full object-cover" alt="Background" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/40 to-black/80" />
         </div>
 
         <motion.div 
@@ -121,7 +126,10 @@ export default function App() {
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-green-500 to-orange-500"></div>
           
           <div className="flex justify-between items-center mb-10">
-            <h1 className="text-4xl font-black tracking-tighter">ECO RUTA</h1>
+            <div className="flex items-center gap-3">
+              <Logo className="w-16 h-16" />
+              <h1 className="text-4xl font-black tracking-tighter">ECO RUTA</h1>
+            </div>
             <div className="flex gap-2 p-1 bg-white/5 rounded-2xl border border-white/10">
               <button 
                 onClick={() => setIsRegistering(false)}
@@ -165,6 +173,7 @@ export default function App() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required={isRegistering || role === 'admin' || role === 'trabajador'}
+                      minLength={8}
                     />
                   </div>
                 </div>
@@ -254,6 +263,7 @@ export default function App() {
       <nav className="p-6 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto glass-panel px-8 py-5 flex justify-between items-center bg-black/40">
           <div className="flex items-center gap-4">
+            <Logo className="w-12 h-12" />
             <div className={`p-3 rounded-2xl ${activeRole.bg} border-2 ${activeRole.border}`}>
               <activeRole.icon className={activeRole.color} size={24} />
             </div>

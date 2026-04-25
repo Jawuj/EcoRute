@@ -37,7 +37,7 @@ body {
 }
 
 .glass-panel {
-  @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2rem] shadow-2xl;
+  @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2rem];
 }
 
 /* Custom Scrollbar */

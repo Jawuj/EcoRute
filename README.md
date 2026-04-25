@@ -35,23 +35,26 @@ Esta herramienta busca transformar la gestión ambiental urbana, mejorando los t
 - **Actualización de Estado**: Marca los puntos críticos como resueltos una vez se ha realizado la limpieza.
 
 ### Para Administradores (Panel Admin)
-- **Dashboard Estadístico**: Visualización de métricas generales del sistema (usuarios, reportes, recolecciones).
-- **Gestión Global**: Supervisión de toda la actividad de la plataforma y administración de recursos.
-- **Analíticas en Tiempo Real**: Gráficos interactivos sobre el impacto ambiental y eficiencia de las rutas.
+- **Dashboard Estratégico**: Visualización de métricas de impacto ambiental en tiempo real.
+- **Métricas de Impacto**: Cálculo automático de **Kg Recuperados** y **CO2 Mitigado** basado en factores específicos para Medellín.
+- **Supervisión Global**: Monitoreo de toda la actividad de la plataforma y gestión de usuarios/trabajadores.
+- **Mapa de Monitoreo**: Visualización geoespacial con filtros avanzados y mapas de calor prioritarios.
 
 ---
 
 ## Funcionalidades Avanzadas
 
 ### 🗺️ Motor de Mapas Inteligente
-- **Navegación tipo Uber**: Los recicladores y trabajadores ven su posición en tiempo real con rotación basada en la orientación del dispositivo.
-- **Cálculo de Rutas Dinámico**: Integración con *Leaflet Routing Machine* para trazar el camino más corto hacia los puntos de recolección.
-- **Mapas de Calor (Heatmaps)**: Visualización de zonas con mayor densidad de residuos para planeación urbana estratégica.
+- **Navegación Inteligente**: Siguiendo al usuario en tiempo real con rotación basada en brújula y auto-centrado tipo GPS.
+- **Cálculo de Rutas Dinámico**: Integración con *Leaflet Routing Machine* para trazar el camino más eficiente.
+- **Mapas de Calor Ponderados (Priority Heatmaps)**: Visualización de zonas críticas basada en la peligrosidad del residuo (Biológico > Escombros > Basura).
+- **Control de Temas**: Alternancia instantánea entre **Modo Oscuro (Dark Matter)** y **Modo Claro (Voyager Light)** para visibilidad óptima en exteriores.
 
 ### ⚡ Experiencia de Usuario Premium
 - **Diseño Glassmorphic**: Interfaz moderna con efectos de desenfoque y transparencias.
 - **Animaciones Fluidas**: Uso de *Framer Motion* para transiciones entre vistas y micro-interacciones.
 - **Diseño Responsivo**: Adaptado perfectamente para dispositivos móviles (uso en campo) y escritorio (administración).
+- **Trazabilidad Total**: Sistema de auditoría permanente donde ningún reporte se elimina, garantizando el registro histórico de cada intervención.
 
 ---
 

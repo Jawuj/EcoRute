@@ -191,14 +191,14 @@ export function CiudadanoView({ user, showToast }) {
     <div className="max-w-4xl mx-auto space-y-8">
       <header className="text-center space-y-2">
         <h2 className="text-4xl font-black tracking-tight">Reportar Punto Crítico</h2>
-        <p className="text-gray-400 font-medium">Contribuye a una Medellín más limpia y sostenible.</p>
+        <p className="text-gray-300 font-medium">Contribuye a una Medellín más limpia y sostenible.</p>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="glass-panel p-8 space-y-8">
           <form onSubmit={handleReport} className="space-y-8">
             <div className="space-y-4">
-              <label className="block text-xs font-black uppercase tracking-[0.2em] text-gray-500">1. Tipo de Residuo</label>
+              <label className="block text-xs font-black uppercase tracking-[0.2em] text-white/80">1. Tipo de Residuo</label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
                 {materials.map((m) => (
                   <button
@@ -210,14 +210,14 @@ export function CiudadanoView({ user, showToast }) {
                     <div className={`p-2 rounded-xl bg-gradient-to-br ${m.color} shadow-lg ${material === m.id ? 'scale-110' : 'grayscale opacity-50'}`}>
                       <m.icon size={24} className="text-white" />
                     </div>
-                    <span className={`text-[10px] font-black uppercase tracking-tighter ${material === m.id ? 'text-white' : 'text-gray-600'}`}>{m.name}</span>
+                    <span className={`text-[10px] font-black uppercase tracking-tighter ${material === m.id ? 'text-white' : 'text-white/60'}`}>{m.name}</span>
                   </button>
                 ))}
               </div>
             </div>
 
             <div className="space-y-4">
-              <label className="block text-xs font-black uppercase tracking-[0.2em] text-gray-500">2. Evidencia (Obligatoria)</label>
+              <label className="block text-xs font-black uppercase tracking-[0.2em] text-white/80">2. Evidencia (Obligatoria)</label>
               <label className="group relative p-6 border-2 border-dashed border-white/5 rounded-3xl flex items-center gap-4 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all cursor-pointer overflow-hidden">
                 <input 
                   type="file" 
@@ -229,7 +229,7 @@ export function CiudadanoView({ user, showToast }) {
                   <Camera size={24} className={imageFile ? "text-green-400" : "text-gray-400 group-hover:text-blue-400"} />
                 </div>
                 <div className="flex-1">
-                  <span className="text-xs font-bold uppercase tracking-widest text-gray-500 group-hover:text-white block">
+                  <span className="text-xs font-bold uppercase tracking-widest text-white/80 group-hover:text-white block">
                     {imageFile ? "Imagen Seleccionada" : "Subir Fotografía"}
                   </span>
                   {imageFile && (
